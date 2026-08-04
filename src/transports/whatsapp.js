@@ -1,11 +1,11 @@
 const pino = require('pino');
 const {
   makeWASocket,
-  useMultiFileAuthState,
   fetchLatestWaWebVersion,
   fetchLatestBaileysVersion,
   Browsers,
 } = require('@whiskeysockets/baileys');
+const { useAtomicFileAuthState } = require('../whatsappAuthState');
 const { version: BUNDLED_VERSION } = require('@whiskeysockets/baileys/lib/Defaults/baileys-version.json');
 const qrcode = require('qrcode-terminal');
 const {
@@ -58,7 +58,7 @@ async function resolveVersion() {
 }
 
 async function openSocket(version) {
-  const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+  const { state, saveCreds } = await useAtomicFileAuthState(SESSION_DIR);
   const sock = makeWASocket({
     auth: state,
     logger,

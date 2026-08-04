@@ -55,6 +55,12 @@ Baileys supports two ways to link a personal account, and FamilyOS exposes both 
 
 WhatsApp requests exactly one reconnect (disconnect status 515) immediately after pairing succeeds. That reconnect is performed automatically, so a successful link does not look like a failure.
 
+### Session persistence
+
+Baileys' bundled `useMultiFileAuthState` is not crash-safe: it writes with an async `fs.writeFile` (which truncates the file before writing) and the `creds.update` listener does not await it. A short-lived CLI that exits right after pairing can therefore leave an empty `creds.json` — a session reported as linked but unreadable.
+
+FamilyOS uses its own auth state (`src/whatsappAuthState.js`) instead: each file is written to a temp path, fsynced, and renamed over the target, which is atomic within a filesystem. Writes are synchronous so they are durable before the call returns. File naming and `BufferJSON` encoding match Baileys' so session folders remain interchangeable.
+
 ### Incomplete-pairing state
 
 Baileys selects its handshake from `creds.me` alone — `Socket/socket.js` does `if (!creds.me) generateRegistrationNode else generateLoginNode` — and `requestPairingCode()` sets `creds.me` and emits `creds.update` before pairing has completed. A pairing that is interrupted therefore persists an identity that was never registered, and every subsequent attempt sends a *login* for an unregistered device, which WhatsApp rejects with `<failure reason="401">`.

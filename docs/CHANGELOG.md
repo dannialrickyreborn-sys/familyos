@@ -34,6 +34,13 @@ All notable changes to FamilyOS are documented here.
 - Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
 - Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).
 
+## v0.6.2 — Fix WhatsApp session being saved empty
+
+- **Root cause.** Baileys' `useMultiFileAuthState` persists with an async `fs.writeFile`, which truncates the target to zero bytes before writing, and `ev.on('creds.update', saveCreds)` never awaits the returned promise. `bin/familyos.js` then calls `process.exit()` once the command resolves, abandoning any write still in flight. Pairing reported success while `creds.json` was left empty, so `whatsapp:status` failed with `Unexpected end of JSON input`. The race has two outcomes, both broken: a zero-byte file, or the previous file surviving with the newly registered credentials silently lost.
+- Replaced the bundled auth state with `src/whatsappAuthState.js`, which writes every session file to a temp file, `fsync`s it, then `rename`s it over the target. `rename(2)` is atomic within a filesystem, so a reader only ever sees the old file or the complete new one. The writes are synchronous, so they are durable by the time `saveCreds()` returns and nothing remains in flight for process exit to lose. File naming and `BufferJSON` encoding match Baileys', so existing session folders stay readable.
+- Empty or corrupt session files now read as absent instead of throwing, so a damaged session falls back to a fresh registration, and `whatsapp:status` says the file is damaged and how to recover.
+- Measured under repeated `SIGKILL` during writes: the bundled implementation left a parseable `creds.json` in 5 of 25 runs, the atomic one in 25 of 25.
+
 ## v0.6.1 — Fix WhatsApp linking always failing with 401
 
 - **Root cause.** Baileys chooses its handshake on `creds.me` alone (`Socket/socket.js`: `if (!creds.me) registration else login`), and `requestPairingCode()` writes `creds.me` and emits `creds.update` *before* pairing completes. Any interrupted pairing therefore persisted an identity that was never registered, so every later run sent a **login** for an unregistered device and WhatsApp replied `<failure reason="401">`. The old code read that as "session expired" and, because the state was never cleared, the failure repeated forever.
