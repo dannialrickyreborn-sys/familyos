@@ -59,7 +59,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work togeth
 
 ## CLI
 
-FamilyOS ships a small command-line tool with two commands: `doctor` (checks your setup) and `brief` (prints today's executive brief from Notion).
+FamilyOS ships a small command-line tool with three commands: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), and `brief` (prints today's executive brief from Notion).
 
 ### Install
 
@@ -85,13 +85,14 @@ Edit `.env` and fill in:
 
 ```
 npm run doctor
+npm run config
 npm run brief
 ```
 
 ## Current Status
 
-**Milestone 1 — Foundation** is complete. The repository has a clean structure and baseline documentation. No application code, workflows, or automation exist yet — by design.
+**Milestone 1 — Foundation** is complete. **Milestone 2 — First Validated Capability** is in progress: a working `familyos` CLI (`doctor`, `config`, `brief`) connects to Notion and generates a real Executive Brief. See [docs/capabilities/CAPABILITY-REGISTRY.md](docs/capabilities/CAPABILITY-REGISTRY.md) for its validation status.
 
 ## Next Milestone
 
-**Milestone 2 — Daily Life.** See [docs/ROADMAP.md](docs/ROADMAP.md) for the full milestone plan.
+**Milestone 3 — Knowledge**, once the Daily Brief capability is validated through real, sustained use. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full milestone plan.

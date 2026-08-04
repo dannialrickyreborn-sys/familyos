@@ -18,7 +18,7 @@ Help build and maintain FamilyOS as a clean, simple, well-documented system that
 
 ## Coding Standards
 
-- No application code, APIs, or databases exist yet in this repository — do not introduce them outside of an explicit milestone task.
+- Application code (the `familyos` CLI) exists because an explicit task authorized it. Introduce further code only under an explicit task or a proposed capability — never speculatively.
 - When code is eventually added, keep files small, plain, and readable over clever.
 - No placeholder code, stub files, or "TODO: implement later" scaffolding. If a task isn't ready to be built, it isn't built.
 - No new dependency is added without a proven, immediate need.
