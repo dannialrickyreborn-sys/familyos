@@ -2,6 +2,7 @@ const pino = require('pino');
 const {
   makeWASocket,
   useMultiFileAuthState,
+  fetchLatestBaileysVersion,
   Browsers,
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
@@ -14,7 +15,24 @@ const logger = pino({ level: 'silent' });
 
 async function openSocket() {
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-  const sock = makeWASocket({ auth: state, logger, browser: Browsers.ubuntu('FamilyOS') });
+
+  // @whiskeysockets/baileys bakes in a fixed WhatsApp Web protocol version
+  // at publish time; once WhatsApp's servers move past it, the handshake
+  // is rejected (connection closes with status 405) before a QR is ever
+  // produced. Fetching the current version avoids that.
+  const { version, isLatest, error } = await fetchLatestBaileysVersion();
+  if (!isLatest) {
+    console.warn(
+      `Could not fetch the latest WhatsApp Web version (${error?.message || 'unknown error'}); using the bundled default, which may be rejected.`
+    );
+  }
+
+  const sock = makeWASocket({
+    auth: state,
+    logger,
+    version,
+    browser: Browsers.ubuntu('FamilyOS'),
+  });
   sock.ev.on('creds.update', saveCreds);
   return { sock, state };
 }

@@ -33,3 +33,7 @@ All notable changes to FamilyOS are documented here.
 
 - Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
 - Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).
+
+## v0.5.1 — Fix WhatsApp pairing (405 before QR)
+
+- `npm run whatsapp:link` was failing immediately with "connection closed (status 405)" and no QR, on real devices (Termux, Node 24) with normal internet access. Cause: Baileys `6.7.23` bakes in a fixed WhatsApp Web protocol version at publish time, and WhatsApp's servers now reject that stale version during the handshake, before the QR step. Fixed by calling Baileys' own `fetchLatestBaileysVersion()` and passing the current version into `makeWASocket()`, with the bundled default kept as an automatic fallback if the version fetch itself fails.
