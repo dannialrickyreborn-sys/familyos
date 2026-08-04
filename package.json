@@ -8,7 +8,8 @@
   },
   "scripts": {
     "doctor": "node bin/familyos.js doctor",
-    "brief": "node bin/familyos.js brief"
+    "brief": "node bin/familyos.js brief",
+    "config": "node bin/familyos.js config"
   },
   "engines": {
     "node": ">=18"
