@@ -34,6 +34,14 @@ All notable changes to FamilyOS are documented here.
 - Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
 - Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).
 
+## v0.6.3 — Prove the session was stored
+
+- `whatsapp:link` no longer reports success on trust: after pairing it persists explicitly, then verifies `creds.json` exists, is non-empty, parses, and records a completed registration. If any of that fails it reports the reason instead of printing "linked successfully", so a session that cannot be read back can never be mistaken for a working one. The success line now includes the stored size.
+- Session writes log the file name and the size measured on disk after the rename (`[session] wrote creds.json (N bytes) via atomic rename`). Key files are logged with `FAMILYOS_DEBUG=1`; `creds.json` is always logged.
+- `writeJsonAtomic` refuses to write empty serialized data outright.
+- `whatsapp-meta.json` is now written with the same temp-file-plus-rename pattern as the session files.
+- Audited every reader and writer of `creds.json`, every `saveCreds` call, and every `process.exit()`: the atomic auth state is the only writer on this branch, and `useMultiFileAuthState` is no longer referenced anywhere in the source.
+
 ## v0.6.2 — Fix WhatsApp session being saved empty
 
 - **Root cause.** Baileys' `useMultiFileAuthState` persists with an async `fs.writeFile`, which truncates the target to zero bytes before writing, and `ev.on('creds.update', saveCreds)` never awaits the returned promise. `bin/familyos.js` then calls `process.exit()` once the command resolves, abandoning any write still in flight. Pairing reported success while `creds.json` was left empty, so `whatsapp:status` failed with `Unexpected end of JSON input`. The race has two outcomes, both broken: a zero-byte file, or the previous file surviving with the newly registered credentials silently lost.

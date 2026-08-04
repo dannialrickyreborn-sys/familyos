@@ -22,9 +22,23 @@ function fixFileName(file) {
   return file?.replace(/\//g, '__')?.replace(/:/g, '-');
 }
 
+// Reports what was persisted and how large it ended up, measured after the
+// rename. creds.json is always reported because it is the file whose loss
+// breaks a link; the many key files are only reported with FAMILYOS_DEBUG=1.
+function logWrite(filePath, bytes) {
+  const name = path.basename(filePath);
+  if (name === 'creds.json' || process.env.FAMILYOS_DEBUG === '1') {
+    console.log(`[session] wrote ${name} (${bytes} bytes) via atomic rename`);
+  }
+}
+
 function writeJsonAtomic(filePath, data) {
   const tmpPath = `${filePath}.tmp`;
   const json = JSON.stringify(data, BufferJSON.replacer);
+
+  if (typeof json !== 'string' || json.length === 0) {
+    throw new Error(`Refusing to write empty session data to ${path.basename(filePath)}.`);
+  }
 
   try {
     const handle = fs.openSync(tmpPath, 'w');
@@ -41,6 +55,8 @@ function writeJsonAtomic(filePath, data) {
     fs.rmSync(tmpPath, { force: true });
     throw err;
   }
+
+  logWrite(filePath, fs.statSync(filePath).size);
 }
 
 // Missing, empty, or corrupt files all read as absent, which lets Baileys fall

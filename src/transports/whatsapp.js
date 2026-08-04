@@ -13,6 +13,7 @@ const {
   phoneFromJid,
   readSessionInfo,
   clearSession,
+  verifySession,
   recordLogin,
 } = require('../whatsappSession');
 const { describeDisconnect } = require('../whatsappErrors');
@@ -70,7 +71,7 @@ async function openSocket(version) {
     browser: Browsers.ubuntu('Chrome'),
   });
   sock.ev.on('creds.update', saveCreds);
-  return { sock, state };
+  return { sock, state, saveCreds };
 }
 
 // Resolves 'open' once authenticated, or 'restart' when WhatsApp wants the
@@ -201,7 +202,7 @@ async function link(options = {}) {
   let pairingRequested = false;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const { sock, state } = await openSocket(version);
+    const { sock, state, saveCreds } = await openSocket(version);
     const needsPairing = !state.creds.registered;
 
     const onQr = async (qr) => {
@@ -245,15 +246,31 @@ async function link(options = {}) {
       throw err;
     }
 
-    // Prefer the live socket identity: creds.json may not be flushed yet.
     const phone = phoneFromJid(sock.user?.id) || readSessionInfo().phone;
-    sock.end(undefined);
 
     if (result === 'open') {
+      // Persist explicitly before closing rather than relying on the last
+      // creds.update having already been handled, then prove the session can be
+      // read back. Reporting success for a session that does not survive the
+      // process is what made this fail silently before.
+      await saveCreds();
+      sock.end(undefined);
+
+      const check = verifySession();
+      if (!check.ok) {
+        throw new Error(
+          `Pairing completed but the session was not stored correctly: ${check.reason}. Run "npm run whatsapp:link" again.`
+        );
+      }
+
       recordLogin({ phone, waVersion: version.join('.') });
-      console.log(`\nWhatsApp linked successfully${phone ? ` as ${phone}` : ''}.`);
+      console.log(
+        `\nWhatsApp linked successfully${phone ? ` as ${phone}` : ''} — session stored (${check.bytes} bytes).`
+      );
       return;
     }
+
+    sock.end(undefined);
 
     console.log('Reconnecting to finish setting up this device...');
   }
