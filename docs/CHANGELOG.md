@@ -21,3 +21,10 @@ All notable changes to FamilyOS are documented here.
 - Extracted a dedicated Notion database access layer (`src/databases.js`) so future capabilities reuse it instead of duplicating queries.
 - Decoupled brief generation from printing (`buildBrief`) so the same text can later be sent through another transport (e.g. WhatsApp) without rewriting the capability.
 - Reconciled documentation with the shipped CLI (`README.md`, `CLAUDE.md`, capability registry).
+
+## v0.4.0 — WhatsApp transport (self-hosted, no Meta Cloud API)
+
+- Added a transport abstraction (`src/transport.js`) with `console` and `whatsapp` implementations; `familyos brief` now sends through whichever is configured.
+- Added the WhatsApp transport using [Baileys](https://github.com/WhiskeySockets/Baileys) `6.7.23`, pinned to the stable pure-JS line (see `docs/architecture/ADR-001-whatsapp-transport.md` for the full comparison and decision).
+- Added `familyos whatsapp:link` to pair a personal WhatsApp account by scanning a QR code, and a WhatsApp link-status check in `familyos doctor`.
+- Verified: doctor, config, and console-transport brief all still work after the refactor. The live WhatsApp connection itself could not be verified in this environment — this sandbox's egress proxy does not support WebSocket upgrades at all, confirmed by testing and by the proxy's own documentation. Expected to work normally in Termux or any environment with ordinary internet access.

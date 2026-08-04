@@ -20,6 +20,10 @@ The mobile development environment. Termux makes it possible to clone the reposi
 
 The AI pair-programmer for this repository. Claude Code reads `CLAUDE.md` as its operating manual, helps write and maintain documentation, and — starting from Milestone 2 onward — assists with implementation. It is a collaborator constrained by this repository's rules, not an independent decision-maker.
 
+### WhatsApp
+
+The executive interface — where the family actually reads what FamilyOS produces (starting with the daily brief). Self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys), which speaks WhatsApp Web's protocol directly from the `familyos` CLI using a personal WhatsApp account — no Meta Cloud API, no third-party provider. See [ADR-001](architecture/ADR-001-whatsapp-transport.md) for why Baileys was chosen. Output capabilities (like the daily brief) are written against a transport abstraction, so WhatsApp is the first transport, not the only possible one.
+
 ### n8n (optional)
 
 An automation engine, introduced only once a real, recurring automation need exists — not before. When adopted, n8n workflows will be documented under `automation/`, with the workflow's purpose and trigger explained before the workflow definition itself.

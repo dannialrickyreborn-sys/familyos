@@ -13,7 +13,7 @@ Running one command shows an accurate, readable summary of today's tasks, events
 
 ## Scope
 
-Reads from up to four Notion databases (Tasks, Calendar, Bills, Documents) and prints a plain-text brief to the terminal. It does not write back to Notion, does not send notifications, and does not interpret or summarize content with AI — it filters and lists.
+Reads from up to four Notion databases (Tasks, Calendar, Bills, Documents) and delivers a plain-text brief through a pluggable transport — the terminal by default, or a personal WhatsApp account (see ADR-001) once linked. It does not write back to Notion, and does not interpret or summarize content with AI — it filters and lists.
 
 ## Inputs
 
@@ -25,11 +25,11 @@ Any database left unconfigured is skipped and reported as such in the output.
 
 ## Outputs
 
-A terminal-printed brief: overdue tasks, tasks due today, today's calendar events, bills due within 7 days, and the 5 most recently updated documents.
+A brief covering overdue tasks, tasks due today, today's calendar events, bills due within 7 days, and the 5 most recently updated documents — printed to the terminal, or sent to WhatsApp if `BRIEF_TRANSPORT=whatsapp`.
 
 ## Dependencies
 
-The `familyos` CLI (`bin/familyos.js`, `src/config.js`, `src/notion.js`, `src/databases.js`, `src/properties.js`, `src/brief.js`) and a live Notion connection.
+The `familyos` CLI (`bin/familyos.js`, `src/config.js`, `src/notion.js`, `src/databases.js`, `src/properties.js`, `src/brief.js`, `src/transport.js`), a live Notion connection, and — only for the WhatsApp transport — a linked WhatsApp session (`npm run whatsapp:link`).
 
 ## Success Criteria
 
@@ -45,8 +45,8 @@ Manual, repeated use against real family Notion databases over the course of nor
 
 - Assumes each database has exactly one property of each relevant type (one title, one date, one status/select, one checkbox, one number) — databases with multiple properties of the same type may extract the wrong one.
 - No caching; every run re-queries Notion.
-- Output is terminal-only today — no delivery to WhatsApp, email, or anywhere else yet.
+- The WhatsApp transport requires a one-time device link (`npm run whatsapp:link`, scanning a QR code with a personal WhatsApp account) that a human must perform — it cannot be automated. Automating a personal account this way is also against WhatsApp's Terms of Service; see ADR-001 for the accepted risk.
 
 ## Future Evolution
 
-Once validated through real use, the brief text (`buildBrief()` in `src/brief.js`) is already a plain string, so a future transport (e.g. WhatsApp) could send it without changing this capability — only the sending step would need to be added, once WhatsApp credentials exist.
+The brief text (`buildBrief()` in `src/brief.js`) is a plain string handed to a transport (`src/transport.js`); WhatsApp is the first transport beyond the terminal. Any future transport (email, a different messaging app) only needs to implement the same `send(text, config)` interface — this capability's content-generation logic would not change.

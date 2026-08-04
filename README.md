@@ -53,13 +53,14 @@ FamilyOS is built from free, mobile-accessible tools:
 - **Claude Code** — AI pair-programmer and documentation assistant.
 - **Termux** — mobile Linux environment for developing on the go.
 - **Notion** — personal knowledge base and planning space (optional, external).
+- **WhatsApp** — the executive interface: FamilyOS delivers the daily brief to a personal WhatsApp account, self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys) (no Meta Cloud API). See [ADR-001](docs/architecture/ADR-001-whatsapp-transport.md).
 - **n8n** — automation engine, introduced only when a real automation need exists (optional).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work together.
 
 ## CLI
 
-FamilyOS ships a small command-line tool with three commands: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), and `brief` (prints today's executive brief from Notion).
+FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), and `whatsapp:link` (links this device to a personal WhatsApp account).
 
 ### Install
 
@@ -80,6 +81,8 @@ Edit `.env` and fill in:
 - `NOTION_TOKEN` — an integration token from https://www.notion.so/my-integrations
 - `NOTION_DB_TASKS`, `NOTION_DB_CALENDAR`, `NOTION_DB_BILLS`, `NOTION_DB_DOCUMENTS` — database IDs, each shared with your integration
 - `TIMEZONE` — an IANA timezone, e.g. `Asia/Jakarta` (defaults to `UTC`)
+- `BRIEF_TRANSPORT` — `console` (default) or `whatsapp`
+- `WHATSAPP_TARGET` — your phone number (digits only, with country code) to receive the brief, only needed if using the WhatsApp transport
 
 ### Run
 
@@ -87,6 +90,18 @@ Edit `.env` and fill in:
 npm run doctor
 npm run config
 npm run brief
+```
+
+To send the brief over WhatsApp instead of printing it, link a device once (scan the QR code with WhatsApp > Linked Devices > Link a Device):
+
+```
+npm run whatsapp:link
+```
+
+Then either set `BRIEF_TRANSPORT=whatsapp` in `.env`, or run:
+
+```
+npm run brief -- --transport whatsapp
 ```
 
 ## Current Status
