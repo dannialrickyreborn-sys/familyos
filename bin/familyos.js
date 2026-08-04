@@ -30,16 +30,27 @@ async function main() {
 
   if (command === 'whatsapp:link') {
     const { link } = require('../src/transports/whatsapp');
-    await link();
+    await link({
+      method: getFlagValue(process.argv, '--method'),
+      phone: getFlagValue(process.argv, '--phone'),
+    });
+    return;
+  }
+
+  if (command === 'whatsapp:status') {
+    const { runStatus } = require('../src/whatsappStatus');
+    await runStatus();
     return;
   }
 
   console.log('Usage: familyos <command>\n');
   console.log('Commands:');
-  console.log('  doctor         Check environment, Notion, and WhatsApp link status');
+  console.log('  doctor         Check environment, Notion, and WhatsApp health');
   console.log('  brief [--transport console|whatsapp]   Print (or send) today\'s executive brief');
   console.log('  config         Show current configuration (secrets masked)');
-  console.log('  whatsapp:link  Link this device to a personal WhatsApp account (scan QR code)');
+  console.log('  whatsapp:link [--method qr|code] [--phone <number>]');
+  console.log('                 Link a personal WhatsApp account (interactive menu by default)');
+  console.log('  whatsapp:status  Show WhatsApp link, phone, connection, last login, version');
   process.exitCode = 1;
 }
 

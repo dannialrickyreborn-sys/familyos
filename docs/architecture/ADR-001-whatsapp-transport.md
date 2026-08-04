@@ -46,6 +46,15 @@ It is the only option that is simultaneously free, self-hosted, pure Node.js (no
 - **Account ban risk:** Using a personal account for automated sending is against WhatsApp's Terms of Service. Risk is reduced (not eliminated) by low message volume and sending only to oneself, but the user should understand this is their personal number, not a disposable one.
 - **Pairing requires a human:** Linking a Baileys session to a real WhatsApp account requires scanning a QR code with that account's phone — this cannot be done autonomously and is not something this session can complete on the user's behalf.
 
+## Pairing Methods
+
+Baileys supports two ways to link a personal account, and FamilyOS exposes both via `familyos whatsapp:link`:
+
+- **QR code** — the terminal prints a QR code to scan from the phone. Default.
+- **Pairing code** — FamilyOS sends the phone number to WhatsApp via `requestPairingCode()` and prints an 8-character code that the user types on the phone. This is the practical option in Termux, where the QR code would be displayed on the same screen that needs to scan it.
+
+WhatsApp requests exactly one reconnect (disconnect status 515) immediately after pairing succeeds. That reconnect is performed automatically, so a successful link does not look like a failure.
+
 ## Development-Environment Note (not a Termux/production limitation)
 
 This code was authored in Claude Code Cloud, a remote development sandbox whose outbound network is restricted to an HTTP(S) egress proxy that does not support WebSocket upgrades at all. `familyos whatsapp:link` was run there and hung indefinitely — no QR, no error — because the WebSocket to WhatsApp's servers never connects or fails, it just stalls. That restriction is specific to that authoring sandbox; it does not apply to Termux, or to any device with ordinary internet access, and it is not a Baileys defect. It's recorded here only so a future reader doesn't mistake "couldn't verify a live connection during development" for "doesn't work."

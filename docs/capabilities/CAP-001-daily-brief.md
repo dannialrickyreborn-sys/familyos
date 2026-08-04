@@ -45,7 +45,7 @@ Manual, repeated use against real family Notion databases over the course of nor
 
 - Assumes each database has exactly one property of each relevant type (one title, one date, one status/select, one checkbox, one number) — databases with multiple properties of the same type may extract the wrong one.
 - No caching; every run re-queries Notion.
-- The WhatsApp transport requires a one-time device link (`npm run whatsapp:link`, scanning a QR code with a personal WhatsApp account) that a human must perform — it cannot be automated. Automating a personal account this way is also against WhatsApp's Terms of Service; see ADR-001 for the accepted risk.
+- The WhatsApp transport requires a one-time device link (`npm run whatsapp:link`, either scanning a QR code or entering a pairing code on the phone) that a human must perform — it cannot be automated. Automating a personal account this way is also against WhatsApp's Terms of Service; see ADR-001 for the accepted risk.
 
 ## Future Evolution
 

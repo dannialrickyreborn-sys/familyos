@@ -60,7 +60,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work togeth
 
 ## CLI
 
-FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), and `whatsapp:link` (links this device to a personal WhatsApp account).
+FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), `whatsapp:link` (links this device to a personal WhatsApp account), and `whatsapp:status` (shows the WhatsApp connection state).
 
 ### Install
 
@@ -103,16 +103,53 @@ npm run config
 npm run brief
 ```
 
-To send the brief over WhatsApp instead of printing it, link a device once (scan the QR code with WhatsApp > Linked Devices > Link a Device):
+### Linking WhatsApp
+
+To send the brief over WhatsApp instead of printing it, link a device once:
 
 ```
 npm run whatsapp:link
 ```
 
-Then either set `BRIEF_TRANSPORT=whatsapp` in `.env`, or run:
+It shows a menu with two pairing methods:
+
+1. **QR Code** (default) — a QR code is printed in the terminal. On your phone: WhatsApp > Linked Devices > Link a Device, then scan it.
+2. **Pairing Code** — you enter your phone number, FamilyOS prints an 8-character code, and you type that code on your phone: WhatsApp > Linked Devices > Link a Device > "Link with phone number instead".
+
+Pairing code is the easier option in Termux, since scanning a QR code shown on the same phone's screen is awkward.
+
+Credentials are saved to `.familyos/` (gitignored), so pairing only happens once. WhatsApp normally asks for one automatic reconnect right after pairing — that is handled for you.
+
+The command can also run non-interactively, which is useful in scripts:
+
+```
+npm run whatsapp:link -- --method qr
+npm run whatsapp:link -- --method code --phone +6281234567890
+```
+
+Check the link at any time:
+
+```
+npm run whatsapp:status
+```
+
+It reports whether the account is linked, which phone number, live connection status, last successful login, and the transport version in use.
+
+Once linked, either set `BRIEF_TRANSPORT=whatsapp` in `.env`, or run:
 
 ```
 npm run brief -- --transport whatsapp
+```
+
+### Troubleshooting WhatsApp
+
+`npm run doctor` validates the WhatsApp session file, the stored credentials, and whether WhatsApp is actually reachable. Failures are reported in plain language — session expired, pairing rejected, no internet, unsupported WhatsApp version, or reconnect required — rather than as raw status codes.
+
+If a link stops working, the usual fix is to delete the saved session and pair again:
+
+```
+rm -rf .familyos/whatsapp-session
+npm run whatsapp:link
 ```
 
 ## Current Status
