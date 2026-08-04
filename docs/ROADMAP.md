@@ -8,9 +8,9 @@ Establish the repository structure, baseline documentation, and working conventi
 
 **Status: Complete.**
 
-## M2 — Daily Life
+## M2 — First Validated Capability
 
-Organize the everyday operational layer of family life — routines, schedules, shared responsibilities.
+Introduce the capability model — how FamilyOS proposes, builds, validates, and retires capabilities — and carry one example capability through it.
 
 ## M3 — Knowledge
 

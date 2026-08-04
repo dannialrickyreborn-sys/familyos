@@ -37,3 +37,9 @@ AI (via Claude Code, and later other assistants) is treated as infrastructure, n
 5. **n8n**, once introduced, will connect to external services to automate a specific, real, documented need — never speculative automation.
 
 Each tool has one clear job. None of them overlaps in responsibility, and each is replaceable without breaking the others.
+
+## Principles
+
+**Everything starts as a capability proposal. Only validated capabilities become permanent.**
+
+No tool, workflow, or piece of functionality enters FamilyOS directly. It is first proposed as a capability (see `docs/capabilities/`), then built, tested, and validated against its own stated success criteria. Only once validated and in real use does it earn a permanent place in the system — and it keeps that place only for as long as it continues to earn it.
