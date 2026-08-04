@@ -1,5 +1,5 @@
 const { getConfig } = require('./config');
-const { queryDatabase } = require('./notion');
+const { getDatabasePages } = require('./databases');
 const {
   getTitle,
   getDateValue,
@@ -23,13 +23,12 @@ function isDone(page) {
   return getCheckboxValue(page);
 }
 
-async function fetchPages(token, databaseId) {
-  const result = await queryDatabase(token, databaseId, { page_size: 100 });
-  return result.results || [];
+function formatList(items) {
+  return items.length === 0 ? ['  (none)'] : items.map((item) => `  - ${item}`);
 }
 
 async function buildTasksSection(token, databaseId, today) {
-  const pages = await fetchPages(token, databaseId);
+  const pages = await getDatabasePages(token, databaseId);
   const overdue = [];
   const dueToday = [];
 
@@ -46,7 +45,7 @@ async function buildTasksSection(token, databaseId, today) {
 }
 
 async function buildCalendarSection(token, databaseId, today) {
-  const pages = await fetchPages(token, databaseId);
+  const pages = await getDatabasePages(token, databaseId);
   const events = [];
 
   for (const page of pages) {
@@ -58,7 +57,7 @@ async function buildCalendarSection(token, databaseId, today) {
 }
 
 async function buildBillsSection(token, databaseId, today) {
-  const pages = await fetchPages(token, databaseId);
+  const pages = await getDatabasePages(token, databaseId);
   const weekAhead = addDays(today, 7);
   const dueSoon = [];
 
@@ -74,7 +73,7 @@ async function buildBillsSection(token, databaseId, today) {
 }
 
 async function buildDocumentsSection(token, databaseId) {
-  const pages = await fetchPages(token, databaseId);
+  const pages = await getDatabasePages(token, databaseId);
   const recent = [...pages]
     .sort((a, b) => new Date(b.last_edited_time) - new Date(a.last_edited_time))
     .slice(0, 5)
@@ -83,12 +82,65 @@ async function buildDocumentsSection(token, databaseId) {
   return { total: pages.length, recent };
 }
 
-function printList(items) {
-  if (items.length === 0) {
-    console.log('  (none)');
-    return;
+// Builds the brief as plain text, independent of how it gets delivered —
+// terminal output today, any other transport (e.g. WhatsApp) later just
+// needs to take this string and send it somewhere.
+async function buildBrief(config) {
+  const today = todayInTimezone(config.timezone);
+  const lines = [];
+
+  lines.push("FamilyOS — Today's Executive Brief");
+  lines.push(`${today} (${config.timezone})`);
+  lines.push('');
+
+  if (config.databases.tasks) {
+    const { overdue, dueToday } = await buildTasksSection(
+      config.notionToken,
+      config.databases.tasks,
+      today
+    );
+    lines.push('Overdue Tasks:', ...formatList(overdue), '');
+    lines.push('Tasks Due Today:', ...formatList(dueToday));
+  } else {
+    lines.push('Tasks: not configured (NOTION_DB_TASKS)');
   }
-  for (const item of items) console.log(`  - ${item}`);
+  lines.push('');
+
+  if (config.databases.calendar) {
+    const events = await buildCalendarSection(
+      config.notionToken,
+      config.databases.calendar,
+      today
+    );
+    lines.push("Today's Calendar:", ...formatList(events));
+  } else {
+    lines.push('Calendar: not configured (NOTION_DB_CALENDAR)');
+  }
+  lines.push('');
+
+  if (config.databases.bills) {
+    const dueSoon = await buildBillsSection(
+      config.notionToken,
+      config.databases.bills,
+      today
+    );
+    lines.push('Bills Due Within 7 Days:', ...formatList(dueSoon));
+  } else {
+    lines.push('Bills: not configured (NOTION_DB_BILLS)');
+  }
+  lines.push('');
+
+  if (config.databases.documents) {
+    const { total, recent } = await buildDocumentsSection(
+      config.notionToken,
+      config.databases.documents
+    );
+    lines.push(`Documents: ${total} tracked. Recently updated:`, ...formatList(recent));
+  } else {
+    lines.push('Documents: not configured (NOTION_DB_DOCUMENTS)');
+  }
+
+  return lines.join('\n');
 }
 
 async function runBrief() {
@@ -100,65 +152,7 @@ async function runBrief() {
     return;
   }
 
-  const today = todayInTimezone(config.timezone);
-
-  console.log(`FamilyOS — Today's Executive Brief`);
-  console.log(`${today} (${config.timezone})\n`);
-
-  if (config.databases.tasks) {
-    const { overdue, dueToday } = await buildTasksSection(
-      config.notionToken,
-      config.databases.tasks,
-      today
-    );
-    console.log('Overdue Tasks:');
-    printList(overdue);
-    console.log('\nTasks Due Today:');
-    printList(dueToday);
-  } else {
-    console.log('Tasks: not configured (NOTION_DB_TASKS)');
-  }
-
-  console.log('');
-
-  if (config.databases.calendar) {
-    const events = await buildCalendarSection(
-      config.notionToken,
-      config.databases.calendar,
-      today
-    );
-    console.log("Today's Calendar:");
-    printList(events);
-  } else {
-    console.log('Calendar: not configured (NOTION_DB_CALENDAR)');
-  }
-
-  console.log('');
-
-  if (config.databases.bills) {
-    const dueSoon = await buildBillsSection(
-      config.notionToken,
-      config.databases.bills,
-      today
-    );
-    console.log('Bills Due Within 7 Days:');
-    printList(dueSoon);
-  } else {
-    console.log('Bills: not configured (NOTION_DB_BILLS)');
-  }
-
-  console.log('');
-
-  if (config.databases.documents) {
-    const { total, recent } = await buildDocumentsSection(
-      config.notionToken,
-      config.databases.documents
-    );
-    console.log(`Documents: ${total} tracked. Recently updated:`);
-    printList(recent);
-  } else {
-    console.log('Documents: not configured (NOTION_DB_DOCUMENTS)');
-  }
+  console.log(await buildBrief(config));
 }
 
-module.exports = { runBrief };
+module.exports = { runBrief, buildBrief };
