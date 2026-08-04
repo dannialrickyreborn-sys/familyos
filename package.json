@@ -1,0 +1,16 @@
+{
+  "name": "familyos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FamilyOS command-line tools",
+  "bin": {
+    "familyos": "./bin/familyos.js"
+  },
+  "scripts": {
+    "doctor": "node bin/familyos.js doctor",
+    "brief": "node bin/familyos.js brief"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

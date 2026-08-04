@@ -57,6 +57,37 @@ FamilyOS is built from free, mobile-accessible tools:
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work together.
 
+## CLI
+
+FamilyOS ships a small command-line tool with two commands: `doctor` (checks your setup) and `brief` (prints today's executive brief from Notion).
+
+### Install
+
+```
+git clone <this repo>
+cd familyos
+npm install
+```
+
+### Configure
+
+```
+cp .env.example .env
+```
+
+Edit `.env` and fill in:
+
+- `NOTION_TOKEN` — an integration token from https://www.notion.so/my-integrations
+- `NOTION_DB_TASKS`, `NOTION_DB_CALENDAR`, `NOTION_DB_BILLS`, `NOTION_DB_DOCUMENTS` — database IDs, each shared with your integration
+- `TIMEZONE` — an IANA timezone, e.g. `Asia/Jakarta` (defaults to `UTC`)
+
+### Run
+
+```
+npm run doctor
+npm run brief
+```
+
 ## Current Status
 
 **Milestone 1 — Foundation** is complete. The repository has a clean structure and baseline documentation. No application code, workflows, or automation exist yet — by design.
