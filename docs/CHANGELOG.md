@@ -27,4 +27,9 @@ All notable changes to FamilyOS are documented here.
 - Added a transport abstraction (`src/transport.js`) with `console` and `whatsapp` implementations; `familyos brief` now sends through whichever is configured.
 - Added the WhatsApp transport using [Baileys](https://github.com/WhiskeySockets/Baileys) `6.7.23`, pinned to the stable pure-JS line (see `docs/architecture/ADR-001-whatsapp-transport.md` for the full comparison and decision).
 - Added `familyos whatsapp:link` to pair a personal WhatsApp account by scanning a QR code, and a WhatsApp link-status check in `familyos doctor`.
-- Verified: doctor, config, and console-transport brief all still work after the refactor. The live WhatsApp connection itself could not be verified in this environment — this sandbox's egress proxy does not support WebSocket upgrades at all, confirmed by testing and by the proxy's own documentation. Expected to work normally in Termux or any environment with ordinary internet access.
+- Verified: doctor, config, and console-transport brief all still work after the refactor. The live WhatsApp connection itself could not be verified during development (Claude Code Cloud's sandbox blocks WebSocket upgrades entirely) — a development-environment restriction, not a Termux or production limitation. See `docs/architecture/ADR-001-whatsapp-transport.md`.
+
+## v0.5.0 — Finalized for Termux
+
+- Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
+- Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).

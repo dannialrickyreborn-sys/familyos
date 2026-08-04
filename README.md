@@ -64,6 +64,17 @@ FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config`
 
 ### Install
 
+FamilyOS is built to run in [Termux](https://termux.dev) on an Android phone (it also runs on any machine with Node.js and git).
+
+In Termux, first install Node.js and git:
+
+```
+pkg update && pkg upgrade
+pkg install nodejs-lts git
+```
+
+Then clone and install:
+
 ```
 git clone <this repo>
 cd familyos
