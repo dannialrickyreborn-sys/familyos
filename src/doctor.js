@@ -108,6 +108,13 @@ async function checkWhatsapp() {
       label: 'WhatsApp credentials',
       detail: `Unreadable: ${session.error}`,
     };
+  } else if (session.partial) {
+    credentialsCheck = {
+      ok: false,
+      label: 'WhatsApp credentials',
+      detail:
+        'Incomplete pairing — claims an identity that was never registered (causes failure 401). "npm run whatsapp:link" resets it automatically',
+    };
   } else if (!session.registered) {
     credentialsCheck = {
       ok: false,

@@ -2,14 +2,17 @@ const pino = require('pino');
 const {
   makeWASocket,
   useMultiFileAuthState,
+  fetchLatestWaWebVersion,
   fetchLatestBaileysVersion,
   Browsers,
 } = require('@whiskeysockets/baileys');
+const { version: BUNDLED_VERSION } = require('@whiskeysockets/baileys/lib/Defaults/baileys-version.json');
 const qrcode = require('qrcode-terminal');
 const {
   SESSION_DIR,
   phoneFromJid,
   readSessionInfo,
+  clearSession,
   recordLogin,
 } = require('../whatsappSession');
 const { describeDisconnect } = require('../whatsappErrors');
@@ -29,18 +32,29 @@ const CONNECT_TIMEOUT_MS = 30000;
 // little headroom without ever looping forever.
 const MAX_ATTEMPTS = 3;
 
+// The version bundled in @whiskeysockets/baileys is fixed at publish time and
+// gets rejected once WhatsApp's servers move past it (failure 405), so it is
+// only ever a last resort. Sources are tried most-authoritative first:
+//   1. the client_revision live WhatsApp Web is serving right now
+//   2. the revision Baileys' maintainers last published
+//   3. whatever shipped in the installed package
 async function resolveVersion() {
-  // @whiskeysockets/baileys bakes in a fixed WhatsApp Web protocol version
-  // at publish time; once WhatsApp's servers move past it, the handshake
-  // is rejected (connection closes with status 405) before a QR is ever
-  // produced. Fetching the current version avoids that.
-  const { version, isLatest, error } = await fetchLatestBaileysVersion();
-  if (!isLatest) {
-    console.warn(
-      `Could not fetch the latest WhatsApp Web version (${error?.message || 'unknown error'}); using the bundled default, which may be rejected.`
-    );
+  const sources = [
+    { label: 'live WhatsApp Web', fetch: fetchLatestWaWebVersion },
+    { label: 'Baileys upstream', fetch: fetchLatestBaileysVersion },
+  ];
+
+  const problems = [];
+  for (const source of sources) {
+    const { version, isLatest, error } = await source.fetch();
+    if (isLatest) return version;
+    problems.push(`${source.label}: ${error?.message || 'unavailable'}`);
   }
-  return version;
+
+  console.warn(
+    `Could not determine the current WhatsApp Web version (${problems.join('; ')}). Falling back to the version bundled with Baileys, which WhatsApp may reject.`
+  );
+  return BUNDLED_VERSION;
 }
 
 async function openSocket(version) {
@@ -49,7 +63,11 @@ async function openSocket(version) {
     auth: state,
     logger,
     version,
-    browser: Browsers.ubuntu('FamilyOS'),
+    // The middle element is the *browser* name and goes into the handshake
+    // fingerprint, so it has to be a browser WhatsApp recognises — a custom
+    // value like "FamilyOS" risks being rejected. The device name shown under
+    // Linked Devices comes from the platform, not from this string.
+    browser: Browsers.ubuntu('Chrome'),
   });
   sock.ev.on('creds.update', saveCreds);
   return { sock, state };
@@ -57,7 +75,7 @@ async function openSocket(version) {
 
 // Resolves 'open' once authenticated, or 'restart' when WhatsApp wants the
 // socket reopened to finish setup. Rejects with a human-readable message.
-function waitForOpen(sock, { onQr, timeoutMs }) {
+function waitForOpen(sock, { onQr, timeoutMs, pairing = false }) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       finish();
@@ -94,7 +112,9 @@ function waitForOpen(sock, { onQr, timeoutMs }) {
 
       if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const { kind, message } = describeDisconnect(statusCode, lastDisconnect?.error);
+        const { kind, message } = describeDisconnect(statusCode, lastDisconnect?.error, {
+          pairing,
+        });
         finish();
         if (kind === 'restart') {
           resolve('restart');
@@ -168,6 +188,14 @@ async function link(options = {}) {
     return;
   }
 
+  // A half-finished pairing claims an identity it never registered, which makes
+  // Baileys attempt a login instead of a registration and get failure 401 every
+  // time. Reset it here so a retry cannot inherit the broken state.
+  if (existing.partial || existing.error) {
+    clearSession();
+    console.log('Discarded an incomplete WhatsApp session from a previous attempt.');
+  }
+
   const choice = await resolvePairingChoice(options);
   const version = await resolveVersion();
   let pairingRequested = false;
@@ -199,9 +227,21 @@ async function link(options = {}) {
 
     let result;
     try {
-      result = await waitForOpen(sock, { onQr, timeoutMs: LINK_TIMEOUT_MS });
+      result = await waitForOpen(sock, {
+        onQr,
+        timeoutMs: LINK_TIMEOUT_MS,
+        pairing: needsPairing,
+      });
     } catch (err) {
       sock.end(undefined);
+      // requestPairingCode() persists an identity as soon as it runs, so a
+      // failure here can leave the same half-paired state behind. Clear it so
+      // the next run starts from a registration handshake instead of inheriting
+      // a login that can only fail.
+      if (readSessionInfo().partial) {
+        clearSession();
+        console.error('The incomplete session was reset — run "npm run whatsapp:link" to try again.');
+      }
       throw err;
     }
 
@@ -254,6 +294,11 @@ async function send(text, config) {
   }
 
   const session = readSessionInfo();
+  if (session.partial) {
+    throw new Error(
+      'A previous WhatsApp pairing was left incomplete. Run "npm run whatsapp:link" to finish linking (the stale session is reset automatically).'
+    );
+  }
   if (!session.registered) {
     throw new Error('WhatsApp is not linked yet. Run "npm run whatsapp:link" first.');
   }

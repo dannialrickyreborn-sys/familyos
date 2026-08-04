@@ -12,6 +12,8 @@ async function runStatus() {
 
   if (session.error) {
     console.log(`Linked:            no (session unreadable: ${session.error})`);
+  } else if (session.partial) {
+    console.log('Linked:            no (incomplete pairing — run "npm run whatsapp:link" to reset and retry)');
   } else {
     console.log(`Linked:            ${session.registered ? 'yes' : 'no'}`);
   }

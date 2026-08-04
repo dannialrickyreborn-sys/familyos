@@ -14,7 +14,7 @@ const OFFLINE_ERROR_CODES = new Set([
 // Translates a WhatsApp disconnect into something a human can act on.
 // `kind` is for callers that need to branch (restart vs. give up);
 // `message` is what gets shown.
-function describeDisconnect(statusCode, error) {
+function describeDisconnect(statusCode, error, context = {}) {
   const errorCode = error && (error.code || error.errno);
 
   if (!statusCode && OFFLINE_ERROR_CODES.has(errorCode)) {
@@ -33,6 +33,17 @@ function describeDisconnect(statusCode, error) {
       };
 
     case DisconnectReason.loggedOut: // 401
+      // While pairing, 401 does not mean an expired session: nothing was ever
+      // registered. It means WhatsApp refused this login attempt — typically
+      // because a leftover half-paired session made the client log in instead
+      // of register, or because the QR/pairing code was not accepted in time.
+      if (context.pairing) {
+        return {
+          kind: 'rejected',
+          message:
+            'WhatsApp refused the pairing attempt (401). The QR code or pairing code was not accepted — make sure you complete it promptly, then run "npm run whatsapp:link" again.',
+        };
+      }
       return {
         kind: 'expired',
         message:

@@ -145,6 +145,8 @@ npm run brief -- --transport whatsapp
 
 `npm run doctor` validates the WhatsApp session file, the stored credentials, and whether WhatsApp is actually reachable. Failures are reported in plain language — session expired, pairing rejected, no internet, unsupported WhatsApp version, or reconnect required — rather than as raw status codes.
 
+An interrupted pairing (cancelled, expired code, or a dropped connection) leaves a session that claims an identity it never finished registering. WhatsApp answers those with failure 401, so `whatsapp:link` detects that state and resets it automatically before retrying — no manual cleanup needed.
+
 If a link stops working, the usual fix is to delete the saved session and pair again:
 
 ```

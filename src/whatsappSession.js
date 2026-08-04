@@ -20,23 +20,39 @@ function phoneFromJid(jid) {
   return digits ? `+${digits}` : '';
 }
 
-// { exists, registered, phone, error } — never throws.
+// { exists, registered, partial, phone, error } — never throws.
+//
+// `partial` marks a session that carries an identity (creds.me) without having
+// completed registration. Baileys picks its handshake on `creds.me` alone
+// (Socket/socket.js: `if (!creds.me) registration else login`), so such a
+// session makes it send a *login* for a device that was never registered —
+// which WhatsApp answers with failure 401. requestPairingCode() sets creds.me
+// and emits creds.update immediately, so any interrupted pairing leaves this
+// state behind and every later attempt fails until it is cleared.
 function readSessionInfo() {
   if (!fs.existsSync(CREDS_PATH)) {
-    return { exists: false, registered: false, phone: '', error: null };
+    return { exists: false, registered: false, partial: false, phone: '', error: null };
   }
 
   try {
     const creds = readJson(CREDS_PATH);
+    const registered = Boolean(creds.registered);
+    const hasIdentity = Boolean(creds.me && creds.me.id);
     return {
       exists: true,
-      registered: Boolean(creds.registered),
+      registered,
+      partial: hasIdentity && !registered,
       phone: phoneFromJid(creds.me && creds.me.id),
       error: null,
     };
   } catch (err) {
-    return { exists: true, registered: false, phone: '', error: err.message };
+    return { exists: true, registered: false, partial: false, phone: '', error: err.message };
   }
+}
+
+// Removes the stored session so the next link starts from a clean handshake.
+function clearSession() {
+  fs.rmSync(SESSION_DIR, { recursive: true, force: true });
 }
 
 function readMeta() {
@@ -68,6 +84,7 @@ module.exports = {
   META_PATH,
   phoneFromJid,
   readSessionInfo,
+  clearSession,
   readMeta,
   recordLogin,
 };
