@@ -1,8 +1,6 @@
-const fs = require('fs');
-const path = require('path');
 const { getConfig } = require('./config');
 const { getCurrentUser, getDatabase } = require('./notion');
-const { SESSION_DIR } = require('./whatsappSession');
+const { readSessionInfo } = require('./whatsappSession');
 
 const MIN_NODE_MAJOR = 18;
 
@@ -86,21 +84,63 @@ async function checkDatabases(config) {
   return results;
 }
 
-function checkWhatsapp() {
-  const credsPath = path.join(SESSION_DIR, 'creds.json');
+async function checkWhatsapp() {
+  const session = readSessionInfo();
 
-  if (!fs.existsSync(credsPath)) {
-    return { ok: false, label: 'WhatsApp link', detail: 'Not linked — run "npm run whatsapp:link"' };
+  const sessionCheck = {
+    ok: session.exists,
+    label: 'WhatsApp session',
+    detail: session.exists
+      ? 'Present'
+      : 'Missing — run "npm run whatsapp:link"',
+  };
+
+  let credentialsCheck;
+  if (!session.exists) {
+    credentialsCheck = {
+      ok: false,
+      label: 'WhatsApp credentials',
+      detail: 'Skipped — no session',
+    };
+  } else if (session.error) {
+    credentialsCheck = {
+      ok: false,
+      label: 'WhatsApp credentials',
+      detail: `Unreadable: ${session.error}`,
+    };
+  } else if (!session.registered) {
+    credentialsCheck = {
+      ok: false,
+      label: 'WhatsApp credentials',
+      detail: 'Session exists but pairing never completed — run "npm run whatsapp:link"',
+    };
+  } else {
+    credentialsCheck = {
+      ok: true,
+      label: 'WhatsApp credentials',
+      detail: `Valid${session.phone ? ` (${session.phone})` : ''}`,
+    };
   }
 
-  try {
-    const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
-    return creds.registered
-      ? { ok: true, label: 'WhatsApp link', detail: 'Linked' }
-      : { ok: false, label: 'WhatsApp link', detail: 'Session exists but not registered — run "npm run whatsapp:link"' };
-  } catch (err) {
-    return { ok: false, label: 'WhatsApp link', detail: `Could not read session: ${err.message}` };
+  let reachableCheck;
+  if (!credentialsCheck.ok) {
+    reachableCheck = {
+      ok: false,
+      label: 'WhatsApp reachable',
+      detail: 'Skipped — not linked',
+    };
+  } else {
+    // Only opens a socket when there are valid credentials to open it with.
+    const { checkConnection } = require('./transports/whatsapp');
+    const result = await checkConnection();
+    reachableCheck = {
+      ok: result.ok,
+      label: 'WhatsApp reachable',
+      detail: result.message,
+    };
   }
+
+  return [sessionCheck, credentialsCheck, reachableCheck];
 }
 
 async function runDoctor() {
@@ -112,7 +152,7 @@ async function runDoctor() {
   checks.push(await checkNotionToken(config));
   checks.push(await checkNotionConnection(config));
   checks.push(...(await checkDatabases(config)));
-  checks.push(checkWhatsapp());
+  checks.push(...(await checkWhatsapp()));
 
   console.log('FamilyOS Doctor\n');
 

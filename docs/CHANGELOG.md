@@ -34,6 +34,16 @@ All notable changes to FamilyOS are documented here.
 - Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
 - Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).
 
+## v0.6.0 — Production-ready WhatsApp pairing
+
+- Added a second pairing method: `whatsapp:link` now shows a menu offering **QR Code** (default) or **Pairing Code**. The pairing-code flow asks for a phone number, normalizes it to E.164, requests the code from WhatsApp via Baileys' `requestPairingCode`, and displays it as `XXXX-XXXX`.
+- The command stays scriptable: `--method qr` / `--method code --phone <number>` skip the menu, and non-interactive runs fail with instructions instead of hanging on a prompt.
+- Handles WhatsApp's post-pairing reconnect (status 515) automatically, so linking completes in one command instead of appearing to fail.
+- Replaced raw status codes with human-readable errors covering session expired, pairing rejected, no internet, unsupported WhatsApp version, rate limiting, and reconnect required.
+- Added `familyos whatsapp:status` (`npm run whatsapp:status`): linked state, phone number, live connection status, last login, and transport version.
+- `familyos doctor` now validates the WhatsApp session file, the stored credentials, and live reachability as three separate checks; the network probe is skipped when there is nothing linked, and every connection attempt is bounded by a timeout so no command can hang.
+- Session credentials persist in `.familyos/` (gitignored), so pairing is a one-time step.
+
 ## v0.5.1 — Fix WhatsApp pairing (405 before QR)
 
 - `npm run whatsapp:link` was failing immediately with "connection closed (status 405)" and no QR, on real devices (Termux, Node 24) with normal internet access. Cause: Baileys `6.7.23` bakes in a fixed WhatsApp Web protocol version at publish time, and WhatsApp's servers now reject that stale version during the handshake, before the QR step. Fixed by calling Baileys' own `fetchLatestBaileysVersion()` and passing the current version into `makeWASocket()`, with the bundled default kept as an automatic fallback if the version fetch itself fails.
