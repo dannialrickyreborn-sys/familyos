@@ -1,5 +1,6 @@
 const { getConfig } = require('./config');
 const { getDatabasePages } = require('./databases');
+const { getTransport } = require('./transport');
 const {
   getTitle,
   getDateValue,
@@ -143,7 +144,7 @@ async function buildBrief(config) {
   return lines.join('\n');
 }
 
-async function runBrief() {
+async function runBrief(transportName) {
   const config = getConfig();
 
   if (!config.notionToken) {
@@ -152,7 +153,9 @@ async function runBrief() {
     return;
   }
 
-  console.log(await buildBrief(config));
+  const text = await buildBrief(config);
+  const transport = getTransport(transportName || config.briefTransport);
+  await transport.send(text, config);
 }
 
 module.exports = { runBrief, buildBrief };

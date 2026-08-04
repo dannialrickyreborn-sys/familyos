@@ -12,6 +12,8 @@ function getConfig() {
       bills: process.env.NOTION_DB_BILLS || '',
       documents: process.env.NOTION_DB_DOCUMENTS || '',
     },
+    briefTransport: process.env.BRIEF_TRANSPORT || 'console',
+    whatsappTarget: process.env.WHATSAPP_TARGET || '',
   };
 }
 

@@ -1,5 +1,8 @@
+const fs = require('fs');
+const path = require('path');
 const { getConfig } = require('./config');
 const { getCurrentUser, getDatabase } = require('./notion');
+const { SESSION_DIR } = require('./whatsappSession');
 
 const MIN_NODE_MAJOR = 18;
 
@@ -83,6 +86,23 @@ async function checkDatabases(config) {
   return results;
 }
 
+function checkWhatsapp() {
+  const credsPath = path.join(SESSION_DIR, 'creds.json');
+
+  if (!fs.existsSync(credsPath)) {
+    return { ok: false, label: 'WhatsApp link', detail: 'Not linked — run "npm run whatsapp:link"' };
+  }
+
+  try {
+    const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+    return creds.registered
+      ? { ok: true, label: 'WhatsApp link', detail: 'Linked' }
+      : { ok: false, label: 'WhatsApp link', detail: 'Session exists but not registered — run "npm run whatsapp:link"' };
+  } catch (err) {
+    return { ok: false, label: 'WhatsApp link', detail: `Could not read session: ${err.message}` };
+  }
+}
+
 async function runDoctor() {
   const config = getConfig();
   const checks = [];
@@ -92,6 +112,7 @@ async function runDoctor() {
   checks.push(await checkNotionToken(config));
   checks.push(await checkNotionConnection(config));
   checks.push(...(await checkDatabases(config)));
+  checks.push(checkWhatsapp());
 
   console.log('FamilyOS Doctor\n');
 

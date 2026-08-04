@@ -16,6 +16,8 @@ function runConfig() {
   for (const [name, id] of Object.entries(config.databases)) {
     console.log(`  ${name}: ${id || '(not set)'}`);
   }
+  console.log(`Brief transport: ${config.briefTransport}`);
+  console.log(`WhatsApp target: ${config.whatsappTarget || '(not set)'}`);
 }
 
 module.exports = { runConfig };
