@@ -53,7 +53,7 @@ FamilyOS is built from free, mobile-accessible tools:
 - **Claude Code** — AI pair-programmer and documentation assistant.
 - **Termux** — mobile Linux environment for developing on the go.
 - **Notion** — personal knowledge base and planning space (optional, external).
-- **WhatsApp** — the executive interface: FamilyOS delivers the daily brief to a personal WhatsApp account, self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys) (no Meta Cloud API). See [ADR-001](docs/architecture/ADR-001-whatsapp-transport.md).
+- **WhatsApp** — the executive interface: FamilyOS delivers the daily brief to a personal WhatsApp account, self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys) (no Meta Cloud API). See [WhatsApp Foundation](docs/capabilities/whatsapp-foundation.md) for the transport, session lifecycle, and recovery steps, and [ADR-001](docs/architecture/ADR-001-whatsapp-transport.md) for why Baileys was chosen.
 - **n8n** — automation engine, introduced only when a real automation need exists (optional).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work together.
@@ -146,6 +146,8 @@ npm run brief -- --transport whatsapp
 `npm run doctor` validates the WhatsApp session file, the stored credentials, and whether WhatsApp is actually reachable. Failures are reported in plain language — session expired, pairing rejected, no internet, unsupported WhatsApp version, or reconnect required — rather than as raw status codes.
 
 An interrupted pairing (cancelled, expired code, or a dropped connection) leaves a session that claims an identity it never finished registering. WhatsApp answers those with failure 401, so `whatsapp:link` detects that state and resets it automatically before retrying — no manual cleanup needed.
+
+For the full session lifecycle, recovery table, and re-pairing steps, see [docs/capabilities/whatsapp-foundation.md](docs/capabilities/whatsapp-foundation.md).
 
 If a link stops working, the usual fix is to delete the saved session and pair again:
 

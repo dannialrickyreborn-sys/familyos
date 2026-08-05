@@ -22,7 +22,7 @@ The AI pair-programmer for this repository. Claude Code reads `CLAUDE.md` as its
 
 ### WhatsApp
 
-The executive interface — where the family actually reads what FamilyOS produces (starting with the daily brief). Self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys), which speaks WhatsApp Web's protocol directly from the `familyos` CLI using a personal WhatsApp account — no Meta Cloud API, no third-party provider. See [ADR-001](architecture/ADR-001-whatsapp-transport.md) for why Baileys was chosen. Output capabilities (like the daily brief) are written against a transport abstraction, so WhatsApp is the first transport, not the only possible one.
+The executive interface — where the family actually reads what FamilyOS produces (starting with the daily brief). Self-hosted via [Baileys](https://github.com/WhiskeySockets/Baileys), which speaks WhatsApp Web's protocol directly from the `familyos` CLI using a personal WhatsApp account — no Meta Cloud API, no third-party provider. See [WhatsApp Foundation](capabilities/whatsapp-foundation.md) for how the transport is built and operated, and [ADR-001](architecture/ADR-001-whatsapp-transport.md) for why Baileys was chosen. Output capabilities (like the daily brief) are written against a transport abstraction, so WhatsApp is the first transport, not the only possible one.
 
 ### n8n (optional)
 

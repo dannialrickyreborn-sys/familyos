@@ -2,6 +2,14 @@
 
 All notable changes to FamilyOS are documented here.
 
+## v0.2.0 — WhatsApp Foundation Stable (release tag)
+
+First tagged milestone. The WhatsApp transport is validated end-to-end on a real device: pairing by code succeeds, the session is stored consistently, and `whatsapp:status` reports `Linked: yes` with `Connection status: connected`. The `Unexpected end of JSON input` failure is resolved.
+
+This tag covers everything below it — the CLI (`doctor`, `config`, `brief`, `whatsapp:link`, `whatsapp:status`), the Notion read layer, the transport abstraction, and the WhatsApp transport with atomic session persistence. Capability documentation: `docs/capabilities/whatsapp-foundation.md` (registry entry CAP-002).
+
+Note: the `v0.x.y` headings below were incremental development notes written as the work landed; they do not correspond to release tags. `v0.2.0` is the first actual tag.
+
 ## v0.1.0 — Foundation created
 
 - Established the initial repository structure (`.github/`, `docs/`, `automation/`, `scripts/`, `configs/`, `templates/`, `assets/`).
