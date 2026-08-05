@@ -169,6 +169,8 @@ node bin/familyos.js notify --to parent-1 "dinner is ready"
 node bin/familyos.js notify --all "power is out"
 ```
 
+Every command is authorized through one Policy Engine. Members have a role — `owner`, `parent`, `sibling`, `child`, or `guest` — and the rules live in a single table (`src/policy/rules.js`), never in the capabilities. Anyone can record facts about themselves; only an owner or parent can record facts about someone else, or forget anything. See [Policy Engine](docs/capabilities/policy-engine.md).
+
 FamilyOS remembers structured facts about family members, and they survive a restart:
 
 ```
@@ -177,7 +179,7 @@ node bin/familyos.js message --from "+6281234567890" "/recall me allergy"
 node bin/familyos.js message --from "+6281234567890" "/memory"
 ```
 
-See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), [Memory Engine](docs/capabilities/memory-engine.md), and [Notification Engine](docs/capabilities/notification-engine.md).
+See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), [Memory Engine](docs/capabilities/memory-engine.md), [Notification Engine](docs/capabilities/notification-engine.md), and [Policy Engine](docs/capabilities/policy-engine.md).
 
 ### Troubleshooting WhatsApp
 

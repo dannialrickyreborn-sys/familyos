@@ -4,21 +4,35 @@
       "id": "parent-1",
       "name": "First Parent",
       "phone": "+6281234567890",
-      "role": "admin",
+      "role": "owner",
       "active": true
     },
     {
       "id": "parent-2",
       "name": "Second Parent",
       "phone": "+6281234567891",
-      "role": "member",
+      "role": "parent",
+      "active": true
+    },
+    {
+      "id": "sibling-1",
+      "name": "An Older Sibling",
+      "phone": "+6281234567892",
+      "role": "sibling",
       "active": true
     },
     {
       "id": "child-1",
-      "name": "First Child",
-      "phone": "+6281234567892",
-      "role": "member",
+      "name": "A Child",
+      "phone": "+6281234567893",
+      "role": "child",
+      "active": true
+    },
+    {
+      "id": "guest-1",
+      "name": "A House Guest",
+      "phone": "+6281234567894",
+      "role": "guest",
       "active": false
     }
   ]

@@ -16,7 +16,7 @@ register({
   command: 'memory',
   aliases: ['memories'],
   description: 'list or search memory: /memory [member-id | query]',
-  permissions: [],
+  action: 'memory.recall',
   execute: ({ args }) => {
     const term = args.join(' ').trim();
 

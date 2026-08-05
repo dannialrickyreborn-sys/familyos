@@ -9,9 +9,9 @@ const { REASON, notify, notifyMany, notifyAll } = require('../src/notifications/
 const family = parseRegistry(
   JSON.stringify({
     members: [
-      { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'admin', active: true },
-      { id: 'parent-2', name: 'Second Parent', phone: '+6281234567891', role: 'member', active: true },
-      { id: 'child-1', name: 'First Child', phone: '+6281234567892', role: 'member', active: false },
+      { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'owner', active: true },
+      { id: 'parent-2', name: 'Second Parent', phone: '+6281234567891', role: 'child', active: true },
+      { id: 'child-1', name: 'First Child', phone: '+6281234567892', role: 'child', active: false },
     ],
   })
 );
@@ -217,7 +217,7 @@ test('notifyAll reports a partial failure without stopping', async () => {
 test('notifyAll on a registry with no active members sends nothing', async () => {
   const empty = parseRegistry(
     JSON.stringify({
-      members: [{ id: 'a', name: 'A', phone: '+6281234567890', role: 'member', active: false }],
+      members: [{ id: 'a', name: 'A', phone: '+6281234567890', role: 'child', active: false }],
     })
   );
   const { channel, sent } = recordingChannel();
