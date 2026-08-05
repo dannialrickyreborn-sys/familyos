@@ -150,14 +150,19 @@ cp configs/family.example.json configs/family.json
 npm run family
 ```
 
-Messages from registered members are routed to a small command set (`/help`, `/status`, `/family`, `/ping`); unknown senders are rejected without a reply. Inbound WhatsApp delivery is not wired yet, so routing is exercised through the CLI:
+Messages from registered members are routed to a small command set (`/help`, `/status`, `/family`, `/ping`); unknown senders are rejected without a reply. Start the listener to answer WhatsApp messages automatically:
 
 ```
-npm test
+npm run listen
+```
+
+A single message can also be routed by hand, without WhatsApp:
+
+```
 node bin/familyos.js message --from "+6281234567890" "/help"
 ```
 
-See [Family Registry](docs/capabilities/family-registry.md) and [Message Router](docs/capabilities/message-router.md).
+See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), and [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md).
 
 ### Troubleshooting WhatsApp
 

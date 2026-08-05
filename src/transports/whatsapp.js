@@ -17,6 +17,7 @@ const {
   recordLogin,
 } = require('../whatsappSession');
 const { describeDisconnect } = require('../whatsappErrors');
+const { attachInbound } = require('../whatsappInbound');
 const { normalizePhone } = require('../phone');
 const { isInteractive, withPrompt, chooseOption } = require('../prompt');
 
@@ -339,4 +340,83 @@ async function checkConnection() {
   }
 }
 
-module.exports = { link, send, checkConnection };
+// Resolves once the connection drops, describing why. Used by the listener,
+// which unlike the one-shot commands has to survive a disconnect.
+function waitForClose(sock) {
+  return new Promise((resolve) => {
+    function handler(update) {
+      if (update.connection !== 'close') return;
+      sock.ev.off('connection.update', handler);
+      const statusCode = update.lastDisconnect?.error?.output?.statusCode;
+      resolve(describeDisconnect(statusCode, update.lastDisconnect?.error));
+    }
+    sock.ev.on('connection.update', handler);
+  });
+}
+
+// A dropped session cannot be fixed by reconnecting — re-pairing is required.
+const FATAL_KINDS = new Set(['expired', 'rejected']);
+const RECONNECT_BASE_MS = 2000;
+const RECONNECT_MAX_MS = 60000;
+
+// Long-running inbound listener: subscribes to messages.upsert and answers
+// registered family members. Runs until stopped, reconnecting with backoff.
+// Resolves only once `signal` aborts; that keeps the CLI process alive.
+async function listen({ loadFamily, signal, log = console.log } = {}) {
+  const session = readSessionInfo();
+  if (session.partial) {
+    throw new Error(
+      'A previous WhatsApp pairing was left incomplete. Run "npm run whatsapp:link" to finish linking.'
+    );
+  }
+  if (!session.registered) {
+    throw new Error('WhatsApp is not linked yet. Run "npm run whatsapp:link" first.');
+  }
+
+  const version = await resolveVersion();
+  let backoff = RECONNECT_BASE_MS;
+
+  while (!signal?.aborted) {
+    const { sock } = await openSocket(version);
+    attachInbound(sock, { loadFamily, log });
+
+    let closure;
+    try {
+      const opened = await waitForOpen(sock, { timeoutMs: CONNECT_TIMEOUT_MS });
+      if (opened === 'open') {
+        backoff = RECONNECT_BASE_MS;
+        recordLogin({ phone: session.phone, waVersion: version.join('.') });
+        log(`[listen] connected${session.phone ? ` as ${session.phone}` : ''} — waiting for messages`);
+        closure = await Promise.race([
+          waitForClose(sock),
+          new Promise((resolve) => {
+            if (!signal) return;
+            signal.addEventListener('abort', () => resolve({ kind: 'stopped', message: 'stopped' }), {
+              once: true,
+            });
+          }),
+        ]);
+      } else {
+        closure = { kind: 'restart', message: 'WhatsApp asked for a reconnect.' };
+      }
+    } catch (err) {
+      closure = { kind: 'unknown', message: err.message };
+    } finally {
+      sock.end(undefined);
+    }
+
+    if (signal?.aborted || closure.kind === 'stopped') break;
+
+    if (FATAL_KINDS.has(closure.kind)) {
+      throw new Error(closure.message);
+    }
+
+    log(`[listen] disconnected: ${closure.message} — reconnecting in ${Math.round(backoff / 1000)}s`);
+    await new Promise((resolve) => setTimeout(resolve, backoff));
+    backoff = Math.min(backoff * 2, RECONNECT_MAX_MS);
+  }
+
+  log('[listen] stopped.');
+}
+
+module.exports = { link, send, checkConnection, listen };

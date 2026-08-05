@@ -64,6 +64,12 @@ async function main() {
     return;
   }
 
+  if (command === 'listen') {
+    const { runListen } = require('../src/listenCommand');
+    await runListen();
+    return;
+  }
+
   if (command === 'message') {
     const { runMessage } = require('../src/messageCommand');
     runMessage({
@@ -82,6 +88,7 @@ async function main() {
   console.log('                 Link a personal WhatsApp account (interactive menu by default)');
   console.log('  whatsapp:status  Show WhatsApp link, phone, connection, last login, version');
   console.log('  family         List the family registry (configs/family.json)');
+  console.log('  listen         Answer WhatsApp messages from registered members (runs until stopped)');
   console.log('  message --from <phone|jid> "<text>"');
   console.log('                 Route one message as if it arrived from WhatsApp');
   process.exitCode = 1;
