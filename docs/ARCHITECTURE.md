@@ -42,6 +42,48 @@ AI (via Claude Code, and later other assistants) is treated as infrastructure, n
 
 Each tool has one clear job. None of them overlaps in responsibility, and each is replaceable without breaking the others.
 
+## Application layers
+
+The tools above are what FamilyOS is built *from*. These are the layers it is built *as*, inside the `familyos` CLI. Messages travel in two directions and share the middle of the stack.
+
+**Inbound — a family member sends a command:**
+
+```
+WhatsApp transport      messages.upsert          src/transports/whatsapp.js
+        |
+Inbound adapter         normalize + filter       src/whatsappInbound.js
+        |
+Identity                who is speaking          src/familyRegistry.js
+        |
+Router                  known sender? a command? src/messageRouter.js
+        |
+Capability runtime      resolve, permit, run     src/capabilities/runtime.js
+        |
+Capability              /help /status /family    src/capabilities/*.js
+```
+
+**Outbound — a capability notifies someone:**
+
+```
+Capability              notify('parent-1', ...)
+        |
+Notification engine     member ids, never numbers  src/notifications/engine.js
+        |
+Channel router          which channel carries it   src/notifications/channelRouter.js
+        |
+Channel adapter         the only transport importer src/notifications/channels/*.js
+        |
+WhatsApp transport      the only layer that sees a phone number
+```
+
+Three rules hold the layering in place, each enforced by a test rather than by convention:
+
+1. **The router knows no command names.** Adding a capability never touches it.
+2. **The notification engine imports no transport.** Only a channel adapter may.
+3. **Phone numbers stay in the transport layer.** Capabilities and the notification layer address people by member id. Local terminal diagnostics are the deliberate exception, since a person at the terminal already has the registry open.
+
+Each layer is documented as a capability under `docs/capabilities/`.
+
 ## Principles
 
 **Everything starts as a capability proposal. Only validated capabilities become permanent.**

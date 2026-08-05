@@ -2,6 +2,18 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Notification Engine (CAP-008)
+
+A transport-independent way for any capability to message a family member by id.
+
+- **Engine** (`src/notifications/engine.js`) — `notify(memberId, message)`, `notifyMany(memberIds, message)`, `notifyAll(message)`. Recipients are resolved only through the Family Registry. Ordinary outcomes are returned, not thrown: `unknown_member`, `inactive_member`, `no_channel`, `send_failed`, `empty_message`. An inactive member is skipped quietly unless `{ strict: true }`; an unknown id always fails. `notifyMany` continues past a failure and returns one result per recipient in the order requested, plus a `sent`/`skipped`/`failed` summary. `notifyAll` addresses only active members.
+- **Channel router** (`src/notifications/channelRouter.js`) — holds channels by name, validates registrations, and resolves per member (`member.channel`, falling back to the default). WhatsApp is the only channel today; adding another is a module plus one registration, with no change to the engine or any capability.
+- **Boundaries enforced by tests, not convention** — the engine's requires are asserted to be exactly `../familyRegistry` and `./channelRouter`; a test walks `src/notifications/` and fails if any file outside `channels/` imports a transport; another fails on any use of `.phone`, `normalizePhone`, or `phoneFromJid` in `src/notifications/` or `src/capabilities/`. Requiring the engine loads zero Baileys modules, because channels are built lazily.
+- **Transport** — added `sendToMember(member, text)`; the recipient's number is read inside the transport, so the layers above pass member records instead. The existing `send(text, config)` now delegates to the same internal path rather than duplicating it.
+- **`familyos notify`** (`--to <id[,id]>` / `--all`, `--strict`) — exercises the engine on a device; capabilities call it directly.
+- **Fixed a real leak found by the new test:** `/status` was printing the linked phone number into a chat reply. Chat replies can be forwarded, so it now reports `linked` without the number — the reasoning already applied to `/family`. Local diagnostics still show numbers deliberately.
+- **Tests** — 20 new (94 total). **Documentation** — `docs/capabilities/notification-engine.md`, registry entry CAP-008, and a new "Application layers" section in `docs/ARCHITECTURE.md` covering both the inbound and outbound stacks.
+
 ## Unreleased — WhatsApp Inbound
 
 Connects the WhatsApp transport to the capability runtime. `src/messageRouter.js` and everything under `src/capabilities/` are unchanged: this is the adapter that feeds the existing chain, so the CLI and WhatsApp behave identically.

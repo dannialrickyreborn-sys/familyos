@@ -17,8 +17,11 @@ register({
     const session = readSessionInfo();
     const meta = readMeta();
 
+    // No phone number here: this reply goes into a chat, which can be
+    // forwarded or screenshotted. "familyos whatsapp:status" shows the number
+    // locally for whoever is at the terminal.
     let link = 'not linked';
-    if (session.registered) link = `linked${session.phone ? ` as ${session.phone}` : ''}`;
+    if (session.registered) link = 'linked';
     else if (session.partial) link = 'incomplete pairing';
     else if (session.error) link = 'session file damaged';
 

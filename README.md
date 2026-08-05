@@ -162,7 +162,14 @@ A single message can also be routed by hand, without WhatsApp:
 node bin/familyos.js message --from "+6281234567890" "/help"
 ```
 
-See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), and [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md).
+FamilyOS can also message members by id, without any capability handling a phone number:
+
+```
+node bin/familyos.js notify --to parent-1 "dinner is ready"
+node bin/familyos.js notify --all "power is out"
+```
+
+See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), and [Notification Engine](docs/capabilities/notification-engine.md).
 
 ### Troubleshooting WhatsApp
 
