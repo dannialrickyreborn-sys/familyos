@@ -2,6 +2,20 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Capability Runtime
+
+Replaces the static command dispatch with a pluggable capability runtime. Behaviour is unchanged: all 31 existing tests passed without modification.
+
+- **Capability registry** (`src/capabilities/registry.js`) — capabilities self-register with `id`, `command`, `aliases`, `description`, `permissions`, `execute()`. Registration is validated and fails loudly on missing fields, a non-function `execute`, an unknown role, a malformed command word, a duplicate id, or a word already claimed by another capability. Commands and aliases share one namespace, so an alias cannot shadow another capability's command.
+- **Discovery** (`src/capabilities/index.js`) — reads its own directory and requires every module except the runtime's own files. The directory is the list; there is no dispatch table to maintain.
+- **Runtime** (`src/capabilities/runtime.js`) — resolves a parsed command, validates permissions, executes, and returns `{ ok, reason, capability, reply }`. Ordinary outcomes never throw: unknown commands, permission refusals, and a capability that throws are all returned as responses, so one broken capability cannot take the runtime down. A refused capability's `execute` is never called.
+- **Migrated** `/help`, `/status`, `/family`, `/ping` into independent modules, and removed `src/commandEngine.js`. Each gained an alias (`commands`, `health`, `members`). `/help` is now generated from the registry, so a new capability appears in it automatically.
+- **Router** (`src/messageRouter.js`) — now only establishes identity, decides whether the text is a command, and invokes the runtime. It contains no command names, and a test enforces that.
+- **Tests** — 20 new tests (51 total): discovery, alias resolution and case-insensitivity, permission validation in both directions, unknown capability, containment of a throwing capability, every registration rule, and the router dispatching a capability it has never heard of.
+- **Documentation** — `docs/capabilities/capability-runtime.md`; registry entry CAP-005.
+
+Definition of done, verified by doing it: a new capability with an alias and `permissions: ['admin']` was added as a single file — the command and its alias answered, a `member`-role sender was refused, and it appeared in `/help`, with no other file touched.
+
 ## Unreleased — Family Registry & Message Routing Foundation
 
 First application layer above the WhatsApp transport. The transport itself is unchanged.

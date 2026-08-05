@@ -1,6 +1,6 @@
 const { findByPhone } = require('./familyRegistry');
 const { phoneFromJid } = require('./whatsappSession');
-const { parseCommand, executeCommand } = require('./commandEngine');
+const { parseCommand, execute } = require('./capabilities/runtime');
 
 // Outcomes, so callers can branch without matching on prose:
 //   unknown_sender — not an active member; no reply is produced on purpose
@@ -21,7 +21,12 @@ function senderPhone(from) {
 
 // Routes one inbound message. Pure: it reads the registry and the stored
 // session, and returns what should happen — it never sends anything itself.
-function routeMessage({ from, text }, registry) {
+//
+// The router knows nothing about individual commands. It establishes who is
+// speaking, decides whether the text is a command at all, and hands it to the
+// capability runtime; which capabilities exist is entirely the runtime's
+// business. `capabilities` is only ever passed in by tests.
+function routeMessage({ from, text }, registry, capabilities) {
   const phone = senderPhone(from);
   const member = phone ? findByPhone(registry, phone) : null;
 
@@ -37,12 +42,17 @@ function routeMessage({ from, text }, registry) {
     return { result: RESULT.NOT_A_COMMAND, member, reply: null, phone };
   }
 
+  const response = execute(command, { member, family: registry, capabilities });
+
   return {
     result: RESULT.HANDLED,
     member,
-    reply: executeCommand({ command, member, registry }),
+    reply: response.reply,
     phone,
-    command: command.name,
+    command: command.word,
+    capability: response.capability,
+    ok: response.ok,
+    reason: response.reason,
   };
 }
 
