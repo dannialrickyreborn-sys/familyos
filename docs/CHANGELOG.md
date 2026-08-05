@@ -2,6 +2,17 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Family Registry & Message Routing Foundation
+
+First application layer above the WhatsApp transport. The transport itself is unchanged.
+
+- **Family Registry** (`src/familyRegistry.js`, `configs/family.json`) — the single source of truth for family members: unique id, name, phone, role, active flag. Phones are normalized to E.164 on load, so the same number written differently resolves to one person. Validation is strict and names the offending member and field; duplicate ids and duplicate numbers are rejected. The real registry is gitignored; `configs/family.example.json` is the tracked template. `familyos family` lists it.
+- **Message Router** (`src/messageRouter.js`) — resolves the sender from a WhatsApp JID or a plain number against active members, rejects unknown senders *before* the message text is parsed, and passes known senders to the command engine. Unknown senders are never replied to, deliberately. Returns a decision; it never sends anything.
+- **Command Engine** (`src/commandEngine.js`) — `/help`, `/status`, `/family`, `/ping`. Case-insensitive, tolerant of extra arguments, and unknown commands are nudged toward `/help`. `/status` reads the stored session without opening a connection; `/family` never includes phone numbers.
+- **Tests** — 31 tests via Node's built-in runner, no new dependency: `npm test`. Covers registry validation and lookup, router outcomes, every command, and an end-to-end pass that runs the real CLI in a throwaway directory against a registry on disk. One test asserts no phone number is hardcoded as data in `src/` or `bin/`.
+- **Documentation** — `docs/capabilities/family-registry.md`, `docs/capabilities/message-router.md`; registry entries CAP-003 and CAP-004.
+- Inbound WhatsApp delivery is **not** wired: the transport is send-only and connecting a listener would mean modifying it, which was out of scope. `familyos message --from <phone|jid> "<text>"` drives the exact same routing path in the meantime.
+
 ## v0.2.0 — WhatsApp Foundation Stable (release tag)
 
 First tagged milestone. The WhatsApp transport is validated end-to-end on a real device: pairing by code succeeds, the session is stored consistently, and `whatsapp:status` reports `Linked: yes` with `Connection status: connected`. The `Unexpected end of JSON input` failure is resolved.

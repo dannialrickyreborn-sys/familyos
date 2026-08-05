@@ -9,6 +9,21 @@ function getFlagValue(argv, flag) {
   return index === -1 ? undefined : argv[index + 1];
 }
 
+// Everything after the sub-command that is not a flag or a flag's value.
+function getPositionals(argv, flagsWithValues) {
+  const rest = argv.slice(3);
+  const positionals = [];
+  for (let i = 0; i < rest.length; i += 1) {
+    if (flagsWithValues.includes(rest[i])) {
+      i += 1;
+      continue;
+    }
+    if (rest[i].startsWith('--')) continue;
+    positionals.push(rest[i]);
+  }
+  return positionals;
+}
+
 async function main() {
   const command = process.argv[2];
 
@@ -43,6 +58,21 @@ async function main() {
     return;
   }
 
+  if (command === 'family') {
+    const { runFamily } = require('../src/familyReport');
+    runFamily();
+    return;
+  }
+
+  if (command === 'message') {
+    const { runMessage } = require('../src/messageCommand');
+    runMessage({
+      from: getFlagValue(process.argv, '--from'),
+      text: getPositionals(process.argv, ['--from']).join(' '),
+    });
+    return;
+  }
+
   console.log('Usage: familyos <command>\n');
   console.log('Commands:');
   console.log('  doctor         Check environment, Notion, and WhatsApp health');
@@ -51,6 +81,9 @@ async function main() {
   console.log('  whatsapp:link [--method qr|code] [--phone <number>]');
   console.log('                 Link a personal WhatsApp account (interactive menu by default)');
   console.log('  whatsapp:status  Show WhatsApp link, phone, connection, last login, version');
+  console.log('  family         List the family registry (configs/family.json)');
+  console.log('  message --from <phone|jid> "<text>"');
+  console.log('                 Route one message as if it arrived from WhatsApp');
   process.exitCode = 1;
 }
 

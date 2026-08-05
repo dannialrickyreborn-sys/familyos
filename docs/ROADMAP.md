@@ -12,6 +12,8 @@ Establish the repository structure, baseline documentation, and working conventi
 
 Introduce the capability model — how FamilyOS proposes, builds, validates, and retires capabilities — and carry one example capability through it.
 
+**Status: Complete.** The capability model is in place (`docs/capabilities/`), and the WhatsApp Foundation (CAP-002) was validated end-to-end on a real device and tagged `v0.2.0`. The application layer above it — Family Registry (CAP-003) and Message Router (CAP-004) — followed.
+
 ## M3 — Knowledge
 
 Build a durable, searchable knowledge base for family information and decisions.
