@@ -150,7 +150,7 @@ cp configs/family.example.json configs/family.json
 npm run family
 ```
 
-Messages from registered members are routed to a small command set (`/help`, `/status`, `/family`, `/ping`); unknown senders are rejected without a reply. Start the listener to answer WhatsApp messages automatically:
+Messages from registered members are routed to a small command set (`/help`, `/status`, `/family`, `/ping`, plus `/remember`, `/recall`, `/forget`, `/memory`); unknown senders are rejected without a reply. Start the listener to answer WhatsApp messages automatically:
 
 ```
 npm run listen
@@ -169,7 +169,15 @@ node bin/familyos.js notify --to parent-1 "dinner is ready"
 node bin/familyos.js notify --all "power is out"
 ```
 
-See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), and [Notification Engine](docs/capabilities/notification-engine.md).
+FamilyOS remembers structured facts about family members, and they survive a restart:
+
+```
+node bin/familyos.js message --from "+6281234567890" "/remember me allergy peanuts"
+node bin/familyos.js message --from "+6281234567890" "/recall me allergy"
+node bin/familyos.js message --from "+6281234567890" "/memory"
+```
+
+See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), [Memory Engine](docs/capabilities/memory-engine.md), and [Notification Engine](docs/capabilities/notification-engine.md).
 
 ### Troubleshooting WhatsApp
 
