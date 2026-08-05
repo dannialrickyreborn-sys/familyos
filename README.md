@@ -60,7 +60,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work togeth
 
 ## CLI
 
-FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), `whatsapp:link` (links this device to a personal WhatsApp account), and `whatsapp:status` (shows the WhatsApp connection state).
+FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), `whatsapp:link` (links this device to a personal WhatsApp account), `whatsapp:status` (shows the WhatsApp connection state), `family` (lists the family registry), and `message` (routes a message as if it arrived from WhatsApp).
 
 ### Install
 
@@ -140,6 +140,24 @@ Once linked, either set `BRIEF_TRANSPORT=whatsapp` in `.env`, or run:
 ```
 npm run brief -- --transport whatsapp
 ```
+
+### Family registry and commands
+
+Family members live in one place — `configs/family.json`, which holds every phone number FamilyOS knows:
+
+```
+cp configs/family.example.json configs/family.json
+npm run family
+```
+
+Messages from registered members are routed to a small command set (`/help`, `/status`, `/family`, `/ping`); unknown senders are rejected without a reply. Inbound WhatsApp delivery is not wired yet, so routing is exercised through the CLI:
+
+```
+npm test
+node bin/familyos.js message --from "+6281234567890" "/help"
+```
+
+See [Family Registry](docs/capabilities/family-registry.md) and [Message Router](docs/capabilities/message-router.md).
 
 ### Troubleshooting WhatsApp
 

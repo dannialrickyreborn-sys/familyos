@@ -73,6 +73,9 @@ web_modules/
 # Local runtime state (e.g. WhatsApp session credentials)
 .familyos/
 
+# Family registry holds real phone numbers; only the template is tracked
+configs/family.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
