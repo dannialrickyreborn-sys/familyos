@@ -64,6 +64,17 @@ async function main() {
     return;
   }
 
+  if (command === 'notify') {
+    const { runNotify } = require('../src/notifyCommand');
+    await runNotify({
+      to: getFlagValue(process.argv, '--to'),
+      all: process.argv.includes('--all'),
+      strict: process.argv.includes('--strict'),
+      message: getPositionals(process.argv, ['--to']).join(' '),
+    });
+    return;
+  }
+
   if (command === 'listen') {
     const { runListen } = require('../src/listenCommand');
     await runListen();
@@ -91,6 +102,8 @@ async function main() {
   console.log('  listen         Answer WhatsApp messages from registered members (runs until stopped)');
   console.log('  message --from <phone|jid> "<text>"');
   console.log('                 Route one message as if it arrived from WhatsApp');
+  console.log('  notify (--to <member-id[,id]> | --all) [--strict] "<text>"');
+  console.log('                 Send a notification to family members by id');
   process.exitCode = 1;
 }
 

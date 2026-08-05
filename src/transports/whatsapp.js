@@ -306,11 +306,9 @@ async function withConnection(use) {
   );
 }
 
-async function send(text, config) {
-  if (!config.whatsappTarget) {
-    throw new Error('WHATSAPP_TARGET is not set.');
-  }
-
+// The one place a recipient's number is turned into a WhatsApp address.
+// Everything above this file addresses people by member, never by number.
+async function sendToPhone(phone, text) {
   const session = readSessionInfo();
   if (session.partial) {
     throw new Error(
@@ -321,13 +319,29 @@ async function send(text, config) {
     throw new Error('WhatsApp is not linked yet. Run "npm run whatsapp:link" first.');
   }
 
-  const { digits } = normalizePhone(config.whatsappTarget);
+  const { digits } = normalizePhone(phone);
 
   const { version } = await withConnection(async (sock) => {
     await sock.sendMessage(`${digits}@s.whatsapp.net`, { text });
   });
 
   recordLogin({ phone: session.phone, waVersion: version.join('.') });
+}
+
+// Sends to a family-registry member. Callers pass the member record, so the
+// number never has to travel through the layers above.
+async function sendToMember(member, text) {
+  if (!member || !member.phone) {
+    throw new Error('Recipient has no phone number on record.');
+  }
+  return sendToPhone(member.phone, text);
+}
+
+async function send(text, config) {
+  if (!config.whatsappTarget) {
+    throw new Error('WHATSAPP_TARGET is not set.');
+  }
+  return sendToPhone(config.whatsappTarget, text);
 }
 
 // Live reachability probe used by doctor and status. Never throws.
@@ -419,4 +433,4 @@ async function listen({ loadFamily, signal, log = console.log } = {}) {
   log('[listen] stopped.');
 }
 
-module.exports = { link, send, checkConnection, listen };
+module.exports = { link, send, sendToMember, checkConnection, listen };
