@@ -57,14 +57,16 @@ Both are reduced to E.164 digits and matched against active members. A missing, 
 
 ## Commands
 
-`src/commandEngine.js`. Command words are case-insensitive; extra arguments and whitespace are tolerated; an unknown command gets a nudge toward `/help` rather than silence.
+Commands are not the router's concern: it hands the parsed command to the [Capability Runtime](capability-runtime.md), which resolves it, checks permissions, and runs it. The router source contains no command names, and a test enforces that.
 
-| Command | Reply |
-|---|---|
-| `/help` | the list of commands |
-| `/status` | WhatsApp link state, last login, transport version |
-| `/family` | active family members — names, ids and roles |
-| `/ping` | `pong — hello <name>.` |
+Command words are case-insensitive; extra arguments and whitespace are tolerated; aliases resolve to the same capability; an unknown command gets a nudge toward `/help` rather than silence.
+
+| Command | Aliases | Reply |
+|---|---|---|
+| `/help` | `commands` | the list of commands |
+| `/status` | `health` | WhatsApp link state, last login, transport version |
+| `/family` | `members` | active family members — names, ids and roles |
+| `/ping` | — | `pong — hello <name>.` |
 
 Two properties worth noting:
 
