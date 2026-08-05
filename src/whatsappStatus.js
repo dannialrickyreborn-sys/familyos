@@ -11,7 +11,11 @@ async function runStatus() {
   console.log('FamilyOS WhatsApp Status\n');
 
   if (session.error) {
-    console.log(`Linked:            no (session unreadable: ${session.error})`);
+    console.log(
+      `Linked:            no (session file damaged: ${session.error} — run "npm run whatsapp:link" to reset and pair again)`
+    );
+  } else if (session.partial) {
+    console.log('Linked:            no (incomplete pairing — run "npm run whatsapp:link" to reset and retry)');
   } else {
     console.log(`Linked:            ${session.registered ? 'yes' : 'no'}`);
   }

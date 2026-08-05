@@ -55,6 +55,18 @@ Baileys supports two ways to link a personal account, and FamilyOS exposes both 
 
 WhatsApp requests exactly one reconnect (disconnect status 515) immediately after pairing succeeds. That reconnect is performed automatically, so a successful link does not look like a failure.
 
+### Session persistence
+
+Baileys' bundled `useMultiFileAuthState` is not crash-safe: it writes with an async `fs.writeFile` (which truncates the file before writing) and the `creds.update` listener does not await it. A short-lived CLI that exits right after pairing can therefore leave an empty `creds.json` — a session reported as linked but unreadable.
+
+FamilyOS uses its own auth state (`src/whatsappAuthState.js`) instead: each file is written to a temp path, fsynced, and renamed over the target, which is atomic within a filesystem. Writes are synchronous so they are durable before the call returns. File naming and `BufferJSON` encoding match Baileys' so session folders remain interchangeable.
+
+### Incomplete-pairing state
+
+Baileys selects its handshake from `creds.me` alone — `Socket/socket.js` does `if (!creds.me) generateRegistrationNode else generateLoginNode` — and `requestPairingCode()` sets `creds.me` and emits `creds.update` before pairing has completed. A pairing that is interrupted therefore persists an identity that was never registered, and every subsequent attempt sends a *login* for an unregistered device, which WhatsApp rejects with `<failure reason="401">`.
+
+FamilyOS treats a session with an identity but `registered !== true` as unusable and clears it before connecting (and again after a failed attempt), so this state cannot become permanent. `doctor` and `whatsapp:status` report it by name.
+
 ## Development-Environment Note (not a Termux/production limitation)
 
 This code was authored in Claude Code Cloud, a remote development sandbox whose outbound network is restricted to an HTTP(S) egress proxy that does not support WebSocket upgrades at all. `familyos whatsapp:link` was run there and hung indefinitely — no QR, no error — because the WebSocket to WhatsApp's servers never connects or fails, it just stalls. That restriction is specific to that authoring sandbox; it does not apply to Termux, or to any device with ordinary internet access, and it is not a Baileys defect. It's recorded here only so a future reader doesn't mistake "couldn't verify a live connection during development" for "doesn't work."

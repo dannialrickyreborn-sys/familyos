@@ -34,6 +34,30 @@ All notable changes to FamilyOS are documented here.
 - Confirmed no Claude-Code-Cloud-specific assumptions remain in application code; the only cloud-specific content was documentation, now clearly marked as a development-environment note rather than a Termux/production limitation.
 - Expanded `README.md` with explicit Termux setup steps (`pkg install nodejs-lts git`).
 
+## v0.6.3 — Prove the session was stored
+
+- `whatsapp:link` no longer reports success on trust: after pairing it persists explicitly, then verifies `creds.json` exists, is non-empty, parses, and records a completed registration. If any of that fails it reports the reason instead of printing "linked successfully", so a session that cannot be read back can never be mistaken for a working one. The success line now includes the stored size.
+- Session writes log the file name and the size measured on disk after the rename (`[session] wrote creds.json (N bytes) via atomic rename`). Key files are logged with `FAMILYOS_DEBUG=1`; `creds.json` is always logged.
+- `writeJsonAtomic` refuses to write empty serialized data outright.
+- `whatsapp-meta.json` is now written with the same temp-file-plus-rename pattern as the session files.
+- Audited every reader and writer of `creds.json`, every `saveCreds` call, and every `process.exit()`: the atomic auth state is the only writer on this branch, and `useMultiFileAuthState` is no longer referenced anywhere in the source.
+
+## v0.6.2 — Fix WhatsApp session being saved empty
+
+- **Root cause.** Baileys' `useMultiFileAuthState` persists with an async `fs.writeFile`, which truncates the target to zero bytes before writing, and `ev.on('creds.update', saveCreds)` never awaits the returned promise. `bin/familyos.js` then calls `process.exit()` once the command resolves, abandoning any write still in flight. Pairing reported success while `creds.json` was left empty, so `whatsapp:status` failed with `Unexpected end of JSON input`. The race has two outcomes, both broken: a zero-byte file, or the previous file surviving with the newly registered credentials silently lost.
+- Replaced the bundled auth state with `src/whatsappAuthState.js`, which writes every session file to a temp file, `fsync`s it, then `rename`s it over the target. `rename(2)` is atomic within a filesystem, so a reader only ever sees the old file or the complete new one. The writes are synchronous, so they are durable by the time `saveCreds()` returns and nothing remains in flight for process exit to lose. File naming and `BufferJSON` encoding match Baileys', so existing session folders stay readable.
+- Empty or corrupt session files now read as absent instead of throwing, so a damaged session falls back to a fresh registration, and `whatsapp:status` says the file is damaged and how to recover.
+- Measured under repeated `SIGKILL` during writes: the bundled implementation left a parseable `creds.json` in 5 of 25 runs, the atomic one in 25 of 25.
+
+## v0.6.1 — Fix WhatsApp linking always failing with 401
+
+- **Root cause.** Baileys chooses its handshake on `creds.me` alone (`Socket/socket.js`: `if (!creds.me) registration else login`), and `requestPairingCode()` writes `creds.me` and emits `creds.update` *before* pairing completes. Any interrupted pairing therefore persisted an identity that was never registered, so every later run sent a **login** for an unregistered device and WhatsApp replied `<failure reason="401">`. The old code read that as "session expired" and, because the state was never cleared, the failure repeated forever.
+- `whatsapp:link` now detects this half-paired state (and unreadable credentials) and resets the session before connecting, plus again if an attempt fails — so a retry can no longer inherit a session that can only fail.
+- 401 during pairing no longer claims the session expired; it reports that WhatsApp refused the pairing attempt. 401 on an established session still reports expiry.
+- `doctor` and `whatsapp:status` now name the incomplete-pairing state explicitly instead of showing a generic "not registered", and `brief --transport whatsapp` points at the fix.
+- Hardened the WhatsApp Web version lookup: it now tries live WhatsApp Web's `client_revision` first, then Baileys upstream, and only falls back to the version bundled in the package (the one that triggers failure 405) as a last resort. Previously a single fetch was used, whose fallback was that known-bad bundled version.
+- Replaced the `Browsers.ubuntu('FamilyOS')` handshake fingerprint with `Browsers.ubuntu('Chrome')`: the middle element is the *browser* name, so the old value advertised a browser that does not exist.
+
 ## v0.6.0 — Production-ready WhatsApp pairing
 
 - Added a second pairing method: `whatsapp:link` now shows a menu offering **QR Code** (default) or **Pairing Code**. The pairing-code flow asks for a phone number, normalizes it to E.164, requests the code from WhatsApp via Baileys' `requestPairingCode`, and displays it as `XXXX-XXXX`.
