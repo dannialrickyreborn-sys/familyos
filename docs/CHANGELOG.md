@@ -2,6 +2,19 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Zero-Touch Setup (CAP-010)
+
+A fresh clone reaches a running assistant with one command. Nothing is hand-edited.
+
+- **`npm run setup`** — installs dependencies, checks Node, creates `.env`, asks who is in the family and writes a validated `configs/family.json`, offers to pair WhatsApp, summarizes what is ready, and offers to start the listener. Re-running is safe: an existing registry is kept unless you ask to replace it, and an already-linked session is left alone.
+- **Member ids are generated** from the name (`Ricky` → `ricky`), made safe for the registry, and de-duplicated (`ricky-2`). The first person set up becomes `owner` without being asked; later members pick a role. Everything setup writes is validated through the real registry loader first, so it cannot produce a file the rest of FamilyOS would reject.
+- **Answers are validated as they are typed** — a non-international number is re-asked with the reason, an empty name is re-asked, a duplicate number is refused, and repeated invalid input fails loudly rather than writing junk.
+- **Non-interactive terminals** get the manual equivalent printed and a non-zero exit, instead of hanging on a prompt.
+- **Manual steps eliminated:** `npm install`, `cp .env.example .env`, `cp configs/family.example.json configs/family.json`, hand-editing ids/E.164 numbers/roles, and knowing that `.env` is optional at all. What remains is irreducible: each member's name and WhatsApp number have to be typed, and pairing needs a human on the phone.
+- **`doctor` now tells the truth.** An install that only wanted the WhatsApp assistant previously reported **10 failures out of 11 checks**, because unconfigured Notion counted as failure. Checks are grouped into "Required — WhatsApp assistant" and "Optional — Notion daily brief"; unconfigured optional checks are skipped, dependent checks that cannot run yet are reported as such rather than as separate failures, and the run ends with the short list of what actually needs doing. A clean install now shows 2 actions instead of 10 failures. `doctor` also checks the family registry, which it never did before.
+- **Tests** — 18 new (182 total): id generation including unsafe characters and collisions, first-member ownership, role selection and its default, re-asking on bad input, duplicate refusal, giving up loudly, registry validation of whatever setup builds, `.env` creation, the non-interactive path, and `doctor`'s required/optional split in four states.
+- **Documentation** — `docs/capabilities/zero-touch-setup.md`, registry entry CAP-010, and README rewritten around the single command.
+
 ## Unreleased — Policy Engine (CAP-009)
 
 Every capability now enforces permissions through one centralized layer.
