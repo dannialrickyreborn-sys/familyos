@@ -2,6 +2,20 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Memory Engine (CAP-007)
+
+A persistent family memory: FamilyOS can remember structured facts about members, retrieve them later, and survive a restart.
+
+- **Engine** (`src/memory/engine.js`) — `remember(subjectId, key, value)`, `recall(subjectId, key)`, `forget(subjectId, key)`, `search(query)`, plus `listSubject` / `listAll` for listings. Synchronous, which keeps capabilities simple since the runtime executes them synchronously. Subjects are always Family Registry member ids; an unknown id is a structured error (`unknown_subject`) and nothing is written. Keys are normalized (trimmed, lowercased) so `Allergy` and `allergy` are one fact. A repeat write replaces by default; `{ append: true }` accumulates values into a list. A missing key on `recall` or `forget` is not an error.
+- **Inactive members are allowed**, unlike the notification engine. Memory is a record, not an action aimed at someone, so deactivating a member must not make their history unreachable; results carry `active` so callers can decide.
+- **Deterministic** — listings and search results are sorted by subject then key regardless of write order, and the clock is injectable so timestamps can be pinned.
+- **Store** (`src/memory/store.js`) — one JSON file at `.familyos/memory.json`, written atomically. A file that is empty, unparseable, or the wrong shape is **moved aside** to `memory.json.corrupt` rather than overwritten, memory starts empty, and the recovery is reported.
+- **Extracted `src/atomicJson.js`** — the temp-file/`fsync`/`rename` write was already in the WhatsApp auth state, so it was extracted and shared rather than copied. The session's durability checks (round trip after a hard exit, and 25 `SIGKILL`-mid-write runs) were re-run afterwards and still pass.
+- **Search is swappable** — matching is delegated to a `matcher(query, fact)` function, so a vector or AI-backed strategy can replace keyword matching without changing what `search` accepts or returns. A test drives `search` with a custom matcher.
+- **Capabilities** — `/remember`, `/recall`, `/forget`, `/memory` (aliases `note`, `what`, `memories`). `me` resolves to the sender. `/memory` lists everything, one member, or keyword-searches.
+- **Tests** — 40 new (134 total), including persistence across a fresh store instance, corrupt recovery in three shapes, and three architecture tests: the engine's requires are asserted to be exactly `../familyRegistry` and `./store`; no file in `src/memory/` may reach a transport or the notification layer; capabilities may use only the public API, never the store.
+- **Documentation** — `docs/capabilities/memory-engine.md`, registry entry CAP-007 (which closes the numbering gap), and the memory layer added to `docs/ARCHITECTURE.md`, now listing five test-enforced layering rules.
+
 ## Unreleased — Notification Engine (CAP-008)
 
 A transport-independent way for any capability to message a family member by id.

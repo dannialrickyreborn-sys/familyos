@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { initAuthCreds, BufferJSON, proto } = require('@whiskeysockets/baileys');
+const { writeJsonAtomic, readJsonOrNull } = require('./atomicJson');
 
 // Drop-in replacement for Baileys' useMultiFileAuthState.
 //
@@ -32,41 +33,20 @@ function logWrite(filePath, bytes) {
   }
 }
 
-function writeJsonAtomic(filePath, data) {
-  const tmpPath = `${filePath}.tmp`;
-  const json = JSON.stringify(data, BufferJSON.replacer);
-
-  if (typeof json !== 'string' || json.length === 0) {
-    throw new Error(`Refusing to write empty session data to ${path.basename(filePath)}.`);
-  }
-
-  try {
-    const handle = fs.openSync(tmpPath, 'w');
-    try {
-      fs.writeFileSync(handle, json);
-      // Flush to disk before publishing, so a power loss right after the
-      // rename cannot expose an empty file.
-      fs.fsyncSync(handle);
-    } finally {
-      fs.closeSync(handle);
-    }
-    fs.renameSync(tmpPath, filePath);
-  } catch (err) {
-    fs.rmSync(tmpPath, { force: true });
-    throw err;
-  }
-
-  logWrite(filePath, fs.statSync(filePath).size);
+// The atomic write itself lives in src/atomicJson.js, shared with the memory
+// store; only the Buffer encoding and the logging are specific to sessions.
+function writeSessionFile(filePath, data) {
+  const bytes = writeJsonAtomic(filePath, data, {
+    replacer: BufferJSON.replacer,
+    label: 'session data',
+  });
+  logWrite(filePath, bytes);
 }
 
 // Missing, empty, or corrupt files all read as absent, which lets Baileys fall
 // back to fresh credentials instead of throwing.
 function readJson(filePath) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'), BufferJSON.reviver);
-  } catch {
-    return null;
-  }
+  return readJsonOrNull(filePath, { reviver: BufferJSON.reviver });
 }
 
 async function useAtomicFileAuthState(folder) {
@@ -96,7 +76,7 @@ async function useAtomicFileAuthState(folder) {
               const value = data[category][id];
               const file = filePath(`${category}-${id}.json`);
               if (value) {
-                writeJsonAtomic(file, value);
+                writeSessionFile(file, value);
               } else {
                 fs.rmSync(file, { force: true });
               }
@@ -106,7 +86,7 @@ async function useAtomicFileAuthState(folder) {
       },
     },
     saveCreds: async () => {
-      writeJsonAtomic(filePath('creds.json'), creds);
+      writeSessionFile(filePath('creds.json'), creds);
     },
   };
 }

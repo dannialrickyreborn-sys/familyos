@@ -76,11 +76,28 @@ Channel adapter         the only transport importer src/notifications/channels/*
 WhatsApp transport      the only layer that sees a phone number
 ```
 
-Three rules hold the layering in place, each enforced by a test rather than by convention:
+**Sideways — a capability remembers something:**
+
+```
+Capability              remember('parent-1', 'allergy', 'peanuts')
+        |
+Memory engine           subjects are member ids       src/memory/engine.js
+        |
+Memory store            one atomic JSON file          src/memory/store.js
+                                                      .familyos/memory.json
+```
+
+Memory is deliberately off to the side: it depends on the family registry and nothing else, so remembering a fact involves no transport and no notification.
+
+Crash-safe JSON persistence is shared by the memory store and the WhatsApp session through `src/atomicJson.js` — temp file, `fsync`, `rename` — so there is one implementation of the thing that must not lose data.
+
+Five rules hold the layering in place, each enforced by a test rather than by convention:
 
 1. **The router knows no command names.** Adding a capability never touches it.
 2. **The notification engine imports no transport.** Only a channel adapter may.
 3. **Phone numbers stay in the transport layer.** Capabilities and the notification layer address people by member id. Local terminal diagnostics are the deliberate exception, since a person at the terminal already has the registry open.
+4. **The memory engine imports neither a transport nor the notification layer.** Its only dependencies are the family registry and its own store.
+5. **Capabilities reach memory only through its public API**, never the store.
 
 Each layer is documented as a capability under `docs/capabilities/`.
 
