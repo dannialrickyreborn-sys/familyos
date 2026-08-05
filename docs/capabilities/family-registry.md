@@ -30,7 +30,7 @@ cp configs/family.example.json configs/family.json
       "id": "parent-1",
       "name": "First Parent",
       "phone": "+6281234567890",
-      "role": "admin",
+      "role": "owner",
       "active": true
     }
   ]
@@ -42,7 +42,7 @@ cp configs/family.example.json configs/family.json
 | `id` | required, unique. Lowercase letters, digits, `-` or `_`, starting with a letter or digit. This is the stable handle used everywhere else. |
 | `name` | required, non-empty. The display name used in replies. |
 | `phone` | required, unique, international format. Normalized to E.164 on load, so `+62 812-3456-7890`, `6281234567890`, and `006281234567890` are the same person. |
-| `role` | required, one of `admin`, `member`. Recorded but not yet used for permissions. |
+| `role` | required, one of `owner`, `parent`, `sibling`, `child`, `guest`. Drives every permission decision — see [Policy Engine](policy-engine.md). |
 | `active` | required boolean. `false` revokes access without deleting the record. |
 
 Validation is strict and fails loudly: the loader names the offending member and field rather than silently ignoring a bad entry. Duplicate ids and duplicate phone numbers are both rejected — including the case where the same number is written two different ways.
@@ -55,11 +55,13 @@ npm run family
 
 ```
 ID        NAME           PHONE           ROLE    ACTIVE
-parent-1  First Parent   +6281234567890  admin   yes
-parent-2  Second Parent  +6281234567891  member  yes
-child-1   First Child    +6281234567892  member  no
+parent-1  First Parent   +6281234567890  owner    yes
+parent-2  Second Parent  +6281234567891  parent   yes
+sibling-1 An Older Sib.  +6281234567892  sibling  yes
+child-1   A Child        +6281234567893  child    yes
+guest-1   A House Guest  +6281234567894  guest    no
 
-2 active of 3 registered.
+4 active of 5 registered.
 ```
 
 This local view deliberately shows phone numbers and inactive members, because that is what you need when editing the registry. The `/family` chat command shows neither — see [Message Router](message-router.md).
@@ -80,7 +82,7 @@ This local view deliberately shows phone numbers and inactive members, because t
 
 ## Known limitations
 
-- **Roles are not enforced.** `admin` and `member` are recorded, but no command checks them yet. Adding permissions is a separate change.
+- **Roles are enforced through the [Policy Engine](policy-engine.md)**, not here. This file records a member's role; the policy table decides what it permits.
 - **Edited by hand.** There is no command to add or remove members; edit `configs/family.json` and re-run. Validation catches mistakes.
 - **Loaded per run.** The file is read on each invocation, so an edit takes effect on the next command. There is no watching or caching.
 - **`WHATSAPP_TARGET` still exists.** The brief's recipient is still set in `.env`, independent of the registry. Routing that through a member id would mean changing the transport, which is out of scope for this sprint.
@@ -95,6 +97,6 @@ The loader tells you what is wrong and where. Common cases:
 | `not valid JSON` | a syntax error — check commas and quotes |
 | `member #2 ("child-1") has an invalid phone` | use international format with a country code |
 | `duplicate id "..."` / `share the same phone number` | remove the duplicate entry |
-| `has role "..."` | use `admin` or `member` |
+| `has role "..."` | use `owner`, `parent`, `sibling`, `child`, or `guest` |
 
 The registry is plain JSON with no runtime state, so restoring it is just editing the file — nothing else needs resetting.

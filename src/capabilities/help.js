@@ -7,7 +7,7 @@ register({
   command: 'help',
   aliases: ['commands'],
   description: 'show this list',
-  permissions: [],
+  action: 'system.help',
   execute: ({ capabilities }) => {
     const width = Math.max(...capabilities.all().map((c) => c.command.length));
     const lines = capabilities

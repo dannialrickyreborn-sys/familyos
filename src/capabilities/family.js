@@ -8,7 +8,7 @@ register({
   command: 'family',
   aliases: ['members'],
   description: 'list active family members',
-  permissions: [],
+  action: 'registry.read',
   execute: ({ family }) => {
     const members = activeMembers(family);
     if (members.length === 0) return 'No active family members are registered.';

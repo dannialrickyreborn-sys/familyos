@@ -1,14 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizePhone } = require('./phone');
+const { ROLES } = require('./policy/rules');
 
 // The single source of truth for who the family is. No phone number belongs in
 // code or in any other file: everything that needs to identify a person looks
 // them up here by id.
 const REGISTRY_PATH = path.join(process.cwd(), 'configs', 'family.json');
 const EXAMPLE_PATH = path.join(process.cwd(), 'configs', 'family.example.json');
-
-const ROLES = ['admin', 'member'];
 
 function fail(message) {
   throw new Error(`Family registry (${REGISTRY_PATH}): ${message}`);

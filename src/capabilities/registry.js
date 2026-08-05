@@ -1,4 +1,4 @@
-const { ROLES } = require('../familyRegistry');
+const { actions, ruleFor } = require('../policy/rules');
 
 // The in-code registry of capabilities. Not to be confused with the family
 // registry (who the family is) or docs/capabilities/CAPABILITY-REGISTRY.md
@@ -9,7 +9,8 @@ const { ROLES } = require('../familyRegistry');
 //   command       the primary word, without the leading "/"
 //   aliases       alternative words, may be empty
 //   description   one line, shown by /help
-//   permissions   roles allowed to run it; [] means any active member
+//   action        the policy action it performs; the Policy Engine decides who
+//                 may run it, so a capability never names a role
 //   execute       ({ member, family, capabilities, args }) => string
 
 function createRegistry() {
@@ -37,14 +38,24 @@ function createRegistry() {
       fail(`"${capability.id}" needs "aliases" to be an array (use [] for none).`);
     }
 
-    if (!Array.isArray(capability.permissions)) {
-      fail(`"${capability.id}" needs "permissions" to be an array ([] means any member).`);
+    if (typeof capability.action !== 'string' || capability.action.trim() === '') {
+      fail(`"${capability.id}" needs an "action" naming what it does, e.g. "memory.recall".`);
     }
 
-    for (const role of capability.permissions) {
-      if (!ROLES.includes(role)) {
-        fail(`"${capability.id}" lists unknown role "${role}"; expected one of ${ROLES.join(', ')}.`);
-      }
+    // Registering an action no policy defines would make the capability
+    // permanently denied at runtime, so it is caught here instead.
+    if (!ruleFor(capability.action)) {
+      fail(
+        `"${capability.id}" declares action "${capability.action}", which no policy defines. Known actions: ${actions().join(', ')}.`
+      );
+    }
+
+    // A role list on a descriptor would be a permission decision made outside
+    // the Policy Engine.
+    if (capability.permissions !== undefined) {
+      fail(
+        `"${capability.id}" still declares "permissions". Permissions live in src/policy/rules.js; declare an "action" instead.`
+      );
     }
 
     for (const word of [capability.command, ...capability.aliases]) {

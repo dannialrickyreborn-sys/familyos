@@ -14,7 +14,7 @@ register({
   command: 'recall',
   aliases: ['what'],
   description: 'look up a fact: /recall <who|me> <key>',
-  permissions: [],
+  action: 'memory.recall',
   execute: ({ member, args }) => {
     const [who, ...keyParts] = args;
     const key = keyParts.join(' ');

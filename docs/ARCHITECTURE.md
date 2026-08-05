@@ -57,10 +57,14 @@ Identity                who is speaking          src/familyRegistry.js
         |
 Router                  known sender? a command? src/messageRouter.js
         |
-Capability runtime      resolve, permit, run     src/capabilities/runtime.js
+Capability runtime      resolve, then authorize  src/capabilities/runtime.js
+        |
+Policy engine           may this actor do this?  src/policy/engine.js
         |
 Capability              /help /status /family    src/capabilities/*.js
 ```
+
+A capability declares the *action* it performs (`memory.forget`), never who may perform it. The Policy Engine holds every rule in one table, and an action nobody defined is denied rather than allowed.
 
 **Outbound — a capability notifies someone:**
 
@@ -91,13 +95,14 @@ Memory is deliberately off to the side: it depends on the family registry and no
 
 Crash-safe JSON persistence is shared by the memory store and the WhatsApp session through `src/atomicJson.js` — temp file, `fsync`, `rename` — so there is one implementation of the thing that must not lose data.
 
-Five rules hold the layering in place, each enforced by a test rather than by convention:
+Six rules hold the layering in place, each enforced by a test rather than by convention:
 
 1. **The router knows no command names.** Adding a capability never touches it.
 2. **The notification engine imports no transport.** Only a channel adapter may.
 3. **Phone numbers stay in the transport layer.** Capabilities and the notification layer address people by member id. Local terminal diagnostics are the deliberate exception, since a person at the terminal already has the registry open.
 4. **The memory engine imports neither a transport nor the notification layer.** Its only dependencies are the family registry and its own store.
 5. **Capabilities reach memory only through its public API**, never the store.
+6. **Only the policy layer compares a role.** A role literal anywhere else in `src/` fails the build. Capabilities declare actions; the runtime authorizes before executing; the router holds no authorization logic at all.
 
 Each layer is documented as a capability under `docs/capabilities/`.
 

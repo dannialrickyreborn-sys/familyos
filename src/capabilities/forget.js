@@ -10,7 +10,7 @@ register({
   command: 'forget',
   aliases: [],
   description: 'forget a fact: /forget <who|me> <key>',
-  permissions: [],
+  action: 'memory.forget',
   execute: ({ member, args }) => {
     const [who, ...keyParts] = args;
     const key = keyParts.join(' ');

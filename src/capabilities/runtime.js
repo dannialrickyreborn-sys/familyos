@@ -1,6 +1,9 @@
 const { loadCapabilities } = require('./index');
+const { authorize } = require('../policy/engine');
 
 // Why a command did not run, so callers can branch without matching on prose.
+// A refusal carries the Policy Engine's own reason (permission_denied,
+// inactive_actor, ...) rather than flattening every refusal into one code.
 const REASON = {
   UNKNOWN_COMMAND: 'unknown_command',
   FORBIDDEN: 'forbidden',
@@ -20,13 +23,6 @@ function parseCommand(text) {
   return { word: word.toLowerCase(), args };
 }
 
-// An empty permissions list means any active member; otherwise the member's
-// role has to be listed.
-function isPermitted(capability, member) {
-  if (capability.permissions.length === 0) return true;
-  return capability.permissions.includes(member.role);
-}
-
 // Resolves a parsed command to a capability, checks permissions, runs it, and
 // returns a response. Never throws for ordinary outcomes: an unknown command, a
 // forbidden one, or a capability that itself fails all come back as a response
@@ -43,12 +39,18 @@ function execute(command, { member, family, capabilities = loadCapabilities() } 
     };
   }
 
-  if (!isPermitted(capability, member)) {
+  // The coarse gate: could this actor ever perform the capability's action?
+  // A capability acting on a specific subject asks the Policy Engine again with
+  // that resource, which is where "about myself" and "about someone else" part
+  // company. The runtime never inspects a role to decide this.
+  const decision = authorize(member, capability.action);
+  if (!decision.allow) {
     return {
       ok: false,
       reason: REASON.FORBIDDEN,
+      policyReason: decision.reason,
       capability: capability.id,
-      reply: `The /${capability.command} command is limited to: ${capability.permissions.join(', ')}.`,
+      reply: `Not allowed: ${decision.detail}`,
     };
   }
 

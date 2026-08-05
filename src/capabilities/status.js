@@ -12,7 +12,7 @@ register({
   command: 'status',
   aliases: ['health'],
   description: 'system and WhatsApp link status',
-  permissions: [],
+  action: 'system.status',
   execute: () => {
     const session = readSessionInfo();
     const meta = readMeta();

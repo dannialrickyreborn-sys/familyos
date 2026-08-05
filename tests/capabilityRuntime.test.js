@@ -10,8 +10,8 @@ const { routeMessage, RESULT } = require('../src/messageRouter');
 const family = parseRegistry(
   JSON.stringify({
     members: [
-      { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'admin', active: true },
-      { id: 'parent-2', name: 'Second Parent', phone: '+6281234567891', role: 'member', active: true },
+      { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'owner', active: true },
+      { id: 'parent-2', name: 'Second Parent', phone: '+6281234567891', role: 'child', active: true },
     ],
   })
 );
@@ -25,7 +25,7 @@ function stub(overrides = {}) {
     command: 'demo',
     aliases: [],
     description: 'a demo capability',
-    permissions: [],
+    action: 'system.ping',
     execute: () => 'demo ran',
     ...overrides,
   };
@@ -106,9 +106,9 @@ test('an alias reaches the same capability as the command through the runtime', 
 
 // --------------------------------------------------- permission validation
 
-test('an empty permissions list allows any active member', () => {
+test('an action open to everyone allows any active member', () => {
   const capabilities = createRegistry();
-  capabilities.register(stub({ permissions: [] }));
+  capabilities.register(stub({ action: 'system.ping' }));
 
   for (const who of [admin, member]) {
     const response = execute(parseCommand('/demo'), { member: who, family, capabilities });
@@ -118,7 +118,7 @@ test('an empty permissions list allows any active member', () => {
 
 test('a restricted capability admits a listed role and refuses others', () => {
   const capabilities = createRegistry();
-  capabilities.register(stub({ permissions: ['admin'] }));
+  capabilities.register(stub({ action: 'memory.forget' }));
 
   const allowed = execute(parseCommand('/demo'), { member: admin, family, capabilities });
   assert.strictEqual(allowed.ok, true);
@@ -128,21 +128,33 @@ test('a restricted capability admits a listed role and refuses others', () => {
   assert.strictEqual(refused.ok, false);
   assert.strictEqual(refused.reason, REASON.FORBIDDEN);
   assert.strictEqual(refused.capability, 'demo');
-  assert.ok(refused.reply.includes('admin'), 'the refusal should say who may run it');
+  assert.strictEqual(refused.policyReason, 'permission_denied', 'the policy reason should surface');
+  assert.ok(refused.reply.includes('owner'), 'the refusal should say who may run it');
 });
 
 test('a refused capability never runs', () => {
   let ran = false;
   const capabilities = createRegistry();
-  capabilities.register(stub({ permissions: ['admin'], execute: () => { ran = true; return 'x'; } }));
+  capabilities.register(stub({ action: 'memory.forget', execute: () => { ran = true; return 'x'; } }));
 
   execute(parseCommand('/demo'), { member, family, capabilities });
   assert.strictEqual(ran, false, 'execute() ran despite the permission check failing');
 });
 
-test('registration rejects an unknown role', () => {
+test('registration rejects an action no policy defines', () => {
   const capabilities = createRegistry();
-  assert.throws(() => capabilities.register(stub({ permissions: ['boss'] })), /unknown role "boss"/);
+  assert.throws(
+    () => capabilities.register(stub({ action: 'made.up' })),
+    /declares action "made.up", which no policy defines/
+  );
+});
+
+test('registration rejects a descriptor that still declares roles', () => {
+  const capabilities = createRegistry();
+  assert.throws(
+    () => capabilities.register({ ...stub(), permissions: ['owner'] }),
+    /Permissions live in src\/policy\/rules.js/
+  );
 });
 
 // ------------------------------------------------------ unknown capability
@@ -176,7 +188,8 @@ test('registration rejects malformed descriptors', () => {
     [stub({ description: '' }), /non-empty "description"/],
     [stub({ execute: undefined }), /no execute\(\) function/],
     [stub({ aliases: 'x' }), /"aliases" to be an array/],
-    [stub({ permissions: 'admin' }), /"permissions" to be an array/],
+    [stub({ action: undefined }), /needs an "action"/],
+    [stub({ action: '  ' }), /needs an "action"/],
     [stub({ command: 'Bad Command' }), /invalid command word/],
     [stub({ aliases: ['Bad Alias'] }), /invalid command word/],
   ];
@@ -223,7 +236,7 @@ test('the router dispatches a capability it has never heard of', () => {
 
 test('the router surfaces a permission refusal without knowing the capability', () => {
   const capabilities = createRegistry();
-  capabilities.register(stub({ permissions: ['admin'] }));
+  capabilities.register(stub({ action: 'memory.forget' }));
 
   const out = routeMessage({ from: '+6281234567891', text: '/demo' }, family, capabilities);
   assert.strictEqual(out.result, RESULT.HANDLED);

@@ -4,9 +4,9 @@ const { parseRegistry, activeMembers, findByPhone, findById } = require('../src/
 
 const VALID = JSON.stringify({
   members: [
-    { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'admin', active: true },
-    { id: 'parent-2', name: 'Second Parent', phone: '0062 812-3456-7891', role: 'member', active: true },
-    { id: 'child-1', name: 'First Child', phone: '+6281234567892', role: 'member', active: false },
+    { id: 'parent-1', name: 'First Parent', phone: '+6281234567890', role: 'owner', active: true },
+    { id: 'parent-2', name: 'Second Parent', phone: '0062 812-3456-7891', role: 'child', active: true },
+    { id: 'child-1', name: 'First Child', phone: '+6281234567892', role: 'child', active: false },
   ],
 });
 
@@ -52,11 +52,11 @@ test('rejects malformed registries with an actionable message', () => {
   const cases = [
     ['{ not json', /not valid JSON/],
     ['{}', /"members" array/],
-    [JSON.stringify({ members: [{ name: 'x', phone: '+6281234567890', role: 'admin', active: true }] }), /non-empty "id"/],
+    [JSON.stringify({ members: [{ name: 'x', phone: '+6281234567890', role: 'owner', active: true }] }), /non-empty "id"/],
     [JSON.stringify({ members: [{ id: 'a', name: 'x', phone: '+6281234567890', role: 'boss', active: true }] }), /role "boss"/],
-    [JSON.stringify({ members: [{ id: 'a', name: 'x', phone: '+6281234567890', role: 'admin' }] }), /"active" to be true or false/],
-    [JSON.stringify({ members: [{ id: 'a', name: 'x', phone: '0812345', role: 'admin', active: true }] }), /invalid phone/],
-    [JSON.stringify({ members: [{ id: 'Bad_ID', name: 'x', phone: '+6281234567890', role: 'admin', active: true }] }), /use lowercase/],
+    [JSON.stringify({ members: [{ id: 'a', name: 'x', phone: '+6281234567890', role: 'owner' }] }), /"active" to be true or false/],
+    [JSON.stringify({ members: [{ id: 'a', name: 'x', phone: '0812345', role: 'owner', active: true }] }), /invalid phone/],
+    [JSON.stringify({ members: [{ id: 'Bad_ID', name: 'x', phone: '+6281234567890', role: 'owner', active: true }] }), /use lowercase/],
   ];
 
   for (const [input, expected] of cases) {
@@ -67,8 +67,8 @@ test('rejects malformed registries with an actionable message', () => {
 test('rejects duplicate ids and duplicate phone numbers', () => {
   const dupId = JSON.stringify({
     members: [
-      { id: 'a', name: 'A', phone: '+6281234567890', role: 'admin', active: true },
-      { id: 'a', name: 'B', phone: '+6281234567891', role: 'member', active: true },
+      { id: 'a', name: 'A', phone: '+6281234567890', role: 'owner', active: true },
+      { id: 'a', name: 'B', phone: '+6281234567891', role: 'child', active: true },
     ],
   });
   assert.throws(() => parseRegistry(dupId), /duplicate id "a"/);
@@ -76,8 +76,8 @@ test('rejects duplicate ids and duplicate phone numbers', () => {
   // Same person written two ways must still be caught
   const dupPhone = JSON.stringify({
     members: [
-      { id: 'a', name: 'A', phone: '+6281234567890', role: 'admin', active: true },
-      { id: 'b', name: 'B', phone: '62 812 3456 7890', role: 'member', active: true },
+      { id: 'a', name: 'A', phone: '+6281234567890', role: 'owner', active: true },
+      { id: 'b', name: 'B', phone: '62 812 3456 7890', role: 'child', active: true },
     ],
   });
   assert.throws(() => parseRegistry(dupPhone), /share the same phone number/);

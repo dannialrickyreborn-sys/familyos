@@ -2,6 +2,22 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — Policy Engine (CAP-009)
+
+Every capability now enforces permissions through one centralized layer.
+
+> **Breaking change to `configs/family.json`.** The roles `admin` and `member` are replaced by `owner`, `parent`, `sibling`, `child`, `guest`. An existing registry will fail validation with the valid list until its roles are updated — deliberately loud, so a stale file cannot be silently mis-authorized. `admin` → `owner`, `member` → whichever of the remaining roles fits.
+
+- **Engine** (`src/policy/engine.js`) — `authorize(actor, action, resource?)` returns `{ ok, allow, deny, reason, detail, actor, action, resource }`. Reasons are `permission_denied`, `unknown_actor`, `inactive_actor`, `unknown_action`. An inactive member is denied even with a permitted role; an unknown or malformed actor is denied; an action absent from the table is denied with the list of actions that exist.
+- **Rules** (`src/policy/rules.js`) — one table, the only place a role is compared. `memory.recall` and the `system.*`/`registry.read` actions are open to everyone; `memory.remember` and `notification.notify` distinguish self (everyone) from others (owner, parent); `memory.forget` is owner/parent with **no** self exception, because losing a fact is harder to undo than adding one; `notification.notifyAll` and `registry.modify` are owner only.
+- **Capabilities declare an action, not roles.** `permissions: [...]` is gone from all eight descriptors, replaced by e.g. `action: 'memory.forget'`. The capability registry rejects a descriptor that still declares `permissions`, and rejects an action no policy defines — so a typo surfaces at start-up rather than as a wrong allow.
+- **Two-stage authorization.** The runtime authorizes before executing (a coarse gate: could this actor ever do this?), and a capability acting on a specific subject authorizes again with that resource. Asked without a resource, a self/others rule permits the actor if either branch would, so the gate never blocks what the precise check would allow. `/remember` is the one capability that needs the second check today.
+- **Roles come from one definition** — `src/policy/rules.js` exports `ROLES`, and the family registry validates against it.
+- **Tests** — 29 new (164 total): the full role matrix for every action (owner allowed, parent allowed, sibling denied, child denied, guest denied), self-versus-others, the coarse gate, inactive actor denied, unknown actor denied, a role outside the policy denied, undefined actions denied, result shape, determinism, both resource forms, and six architecture rules — capabilities may not declare roles or branch on them, must declare a defined action, `/remember` must authorize its subject, the runtime must authorize before executing, the router must contain no authorization logic, and no role literal may appear anywhere in `src/` outside `src/policy/`.
+- **Documentation** — `docs/capabilities/policy-engine.md`, registry entry CAP-009, and `docs/ARCHITECTURE.md` updated with the policy layer and a sixth enforced rule.
+
+Note: `notification.*` and `registry.modify` rules are defined and tested but have no enforcement point yet, since no capability sends notifications or edits the registry. The local CLI is not policed — it runs as whoever is at the terminal, the same trust already extended to `doctor` printing phone numbers.
+
 ## Unreleased — Memory Engine (CAP-007)
 
 A persistent family memory: FamilyOS can remember structured facts about members, retrieve them later, and survive a restart.
