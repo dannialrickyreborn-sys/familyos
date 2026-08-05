@@ -1,6 +1,7 @@
 const { getConfig } = require('./config');
 const { getCurrentUser, getDatabase } = require('./notion');
 const { readSessionInfo } = require('./whatsappSession');
+const { registryExists, loadRegistry, activeMembers } = require('./familyRegistry');
 
 const MIN_NODE_MAJOR = 18;
 
@@ -97,10 +98,13 @@ async function checkWhatsapp() {
 
   let credentialsCheck;
   if (!session.exists) {
+    // Nothing to check yet: the missing session above is the one real problem,
+    // so this is reported as not-yet-checkable rather than a second failure.
     credentialsCheck = {
       ok: false,
+      optional: true,
       label: 'WhatsApp credentials',
-      detail: 'Skipped — no session',
+      detail: 'Not checked — no session yet',
     };
   } else if (session.error) {
     credentialsCheck = {
@@ -133,8 +137,9 @@ async function checkWhatsapp() {
   if (!credentialsCheck.ok) {
     reachableCheck = {
       ok: false,
+      optional: true,
       label: 'WhatsApp reachable',
-      detail: 'Skipped — not linked',
+      detail: 'Not checked — not linked yet',
     };
   } else {
     // Only opens a socket when there are valid credentials to open it with.
@@ -150,28 +155,75 @@ async function checkWhatsapp() {
   return [sessionCheck, credentialsCheck, reachableCheck];
 }
 
-async function runDoctor() {
-  const config = getConfig();
-  const checks = [];
-
-  checks.push(checkNode());
-  checks.push(checkEnvironment(config));
-  checks.push(await checkNotionToken(config));
-  checks.push(await checkNotionConnection(config));
-  checks.push(...(await checkDatabases(config)));
-  checks.push(...(await checkWhatsapp()));
-
-  console.log('FamilyOS Doctor\n');
-
-  for (const check of checks) {
-    const mark = check.ok ? 'OK  ' : 'FAIL';
-    console.log(`[${mark}] ${check.label} — ${check.detail}`);
+// The family registry is what makes FamilyOS usable at all, so it is checked
+// here rather than only surfacing when a message arrives.
+function checkRegistry() {
+  if (!registryExists()) {
+    return {
+      ok: false,
+      label: 'Family registry',
+      detail: 'Not set up — run "npm run setup"',
+    };
   }
 
-  const failures = checks.filter((c) => !c.ok).length;
-  console.log(`\n${checks.length - failures}/${checks.length} checks passed.`);
+  try {
+    const registry = loadRegistry();
+    const active = activeMembers(registry).length;
+    return active > 0
+      ? { ok: true, label: 'Family registry', detail: `${active} active member(s)` }
+      : { ok: false, label: 'Family registry', detail: 'No active members — run "npm run setup"' };
+  } catch (err) {
+    return { ok: false, label: 'Family registry', detail: err.message };
+  }
+}
 
-  if (failures > 0) {
+function print(title, checks) {
+  console.log(`\n${title}`);
+  for (const check of checks) {
+    const mark = check.ok ? 'OK  ' : check.optional ? 'SKIP' : 'FAIL';
+    console.log(`  [${mark}] ${check.label} — ${check.detail}`);
+  }
+}
+
+// Notion powers the daily brief only. Reporting it as failure when it is simply
+// not configured made a perfectly working WhatsApp setup look broken, so
+// unconfigured optional checks are reported as skipped and never fail the run.
+function optionalUnlessConfigured(configured, checks) {
+  return configured ? checks : checks.map((check) => ({ ...check, optional: true }));
+}
+
+async function runDoctor() {
+  const config = getConfig();
+
+  const required = [checkNode(), checkRegistry(), ...(await checkWhatsapp())];
+
+  const notionConfigured = Boolean(config.notionToken);
+  const optional = optionalUnlessConfigured(notionConfigured, [
+    checkEnvironment(config),
+    await checkNotionToken(config),
+    await checkNotionConnection(config),
+    ...(await checkDatabases(config)),
+  ]);
+
+  console.log('FamilyOS Doctor');
+  print('Required — WhatsApp assistant', required);
+  print('Optional — Notion daily brief', optional);
+
+  const failures = required.filter((check) => !check.ok && !check.optional);
+  const optionalFailures = optional.filter((check) => !check.ok && !check.optional);
+
+  if (failures.length === 0) {
+    console.log('\nFamilyOS is ready. Start it with "npm run listen".');
+  } else {
+    console.log(`\n${failures.length} required check(s) failed:`);
+    for (const check of failures) console.log(`  - ${check.label}: ${check.detail}`);
+  }
+
+  if (!notionConfigured) {
+    console.log('\nNotion is not configured. That is fine — it only affects "npm run brief".');
+  }
+
+  if (failures.length > 0 || optionalFailures.length > 0) {
     process.exitCode = 1;
   }
 }

@@ -60,93 +60,80 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these tools work togeth
 
 ## CLI
 
-FamilyOS ships a small command-line tool: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), `whatsapp:link` (links this device to a personal WhatsApp account), `whatsapp:status` (shows the WhatsApp connection state), `family` (lists the family registry), and `message` (routes a message as if it arrived from WhatsApp).
+Start with `npm run setup`. FamilyOS also ships: `doctor` (checks your setup), `config` (shows the currently loaded configuration, secrets masked), `brief` (generates today's executive brief from Notion), `whatsapp:link` (links this device to a personal WhatsApp account), `whatsapp:status` (shows the WhatsApp connection state), `family` (lists the family registry), and `message` (routes a message as if it arrived from WhatsApp).
 
-### Install
+### Get started
 
-FamilyOS is built to run in [Termux](https://termux.dev) on an Android phone (it also runs on any machine with Node.js and git).
+FamilyOS runs in [Termux](https://termux.dev) on an Android phone (and on any machine with Node.js and git).
 
-In Termux, first install Node.js and git:
+In Termux, install Node.js and git once:
 
 ```
 pkg update && pkg upgrade
 pkg install nodejs-lts git
 ```
 
-Then clone and install:
+Then clone and run **one command**:
 
 ```
 git clone <this repo>
 cd familyos
-npm install
+npm run setup
 ```
 
-### Configure
+Setup installs everything, asks who is in the family, pairs WhatsApp, and offers to start the assistant. Nothing needs to be edited by hand.
+
+Once it is running, message the paired WhatsApp account from a registered number:
 
 ```
-cp .env.example .env
+/ping    /help    /status
 ```
 
-Edit `.env` and fill in:
+To check the install at any time:
+
+```
+npm run doctor
+```
+
+`doctor` separates what FamilyOS needs from what is optional — Notion only affects `npm run brief`, so leaving it unconfigured is fine.
+
+To start the assistant later:
+
+```
+npm run listen
+```
+
+### Optional: the Notion daily brief
+
+`.env` is created by setup and only matters for the brief. Fill in:
 
 - `NOTION_TOKEN` — an integration token from https://www.notion.so/my-integrations
 - `NOTION_DB_TASKS`, `NOTION_DB_CALENDAR`, `NOTION_DB_BILLS`, `NOTION_DB_DOCUMENTS` — database IDs, each shared with your integration
 - `TIMEZONE` — an IANA timezone, e.g. `Asia/Jakarta` (defaults to `UTC`)
 - `BRIEF_TRANSPORT` — `console` (default) or `whatsapp`
-- `WHATSAPP_TARGET` — your phone number (digits only, with country code) to receive the brief, only needed if using the WhatsApp transport
-
-### Run
+- `WHATSAPP_TARGET` — the number that receives the brief
 
 ```
-npm run doctor
-npm run config
 npm run brief
-```
-
-### Linking WhatsApp
-
-To send the brief over WhatsApp instead of printing it, link a device once:
-
-```
-npm run whatsapp:link
-```
-
-It shows a menu with two pairing methods:
-
-1. **QR Code** (default) — a QR code is printed in the terminal. On your phone: WhatsApp > Linked Devices > Link a Device, then scan it.
-2. **Pairing Code** — you enter your phone number, FamilyOS prints an 8-character code, and you type that code on your phone: WhatsApp > Linked Devices > Link a Device > "Link with phone number instead".
-
-Pairing code is the easier option in Termux, since scanning a QR code shown on the same phone's screen is awkward.
-
-Credentials are saved to `.familyos/` (gitignored), so pairing only happens once. WhatsApp normally asks for one automatic reconnect right after pairing — that is handled for you.
-
-The command can also run non-interactively, which is useful in scripts:
-
-```
-npm run whatsapp:link -- --method qr
-npm run whatsapp:link -- --method code --phone +6281234567890
-```
-
-Check the link at any time:
-
-```
-npm run whatsapp:status
-```
-
-It reports whether the account is linked, which phone number, live connection status, last successful login, and the transport version in use.
-
-Once linked, either set `BRIEF_TRANSPORT=whatsapp` in `.env`, or run:
-
-```
 npm run brief -- --transport whatsapp
 ```
 
-### Family registry and commands
+### Re-pairing WhatsApp
 
-Family members live in one place — `configs/family.json`, which holds every phone number FamilyOS knows:
+`npm run setup` skips pairing when a session already exists. To pair a different account:
 
 ```
-cp configs/family.example.json configs/family.json
+rm -rf .familyos/whatsapp-session
+npm run whatsapp:link
+```
+
+Pairing offers a QR code or an 8-character pairing code. The code is easier in Termux, where the QR would be on the screen that has to scan it. See [WhatsApp Foundation](docs/capabilities/whatsapp-foundation.md).
+
+### Family registry and commands
+
+Family members live in one place — `configs/family.json`, which holds every phone number FamilyOS knows. `npm run setup` writes it for you; to see or edit it afterwards:
+
+```
 npm run family
 ```
 
@@ -179,7 +166,7 @@ node bin/familyos.js message --from "+6281234567890" "/recall me allergy"
 node bin/familyos.js message --from "+6281234567890" "/memory"
 ```
 
-See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), [Memory Engine](docs/capabilities/memory-engine.md), [Notification Engine](docs/capabilities/notification-engine.md), and [Policy Engine](docs/capabilities/policy-engine.md).
+See [Family Registry](docs/capabilities/family-registry.md), [Message Router](docs/capabilities/message-router.md), [Capability Runtime](docs/capabilities/capability-runtime.md), [WhatsApp Inbound](docs/capabilities/whatsapp-inbound.md), [Memory Engine](docs/capabilities/memory-engine.md), [Notification Engine](docs/capabilities/notification-engine.md), [Policy Engine](docs/capabilities/policy-engine.md), and [Zero-Touch Setup](docs/capabilities/zero-touch-setup.md).
 
 ### Troubleshooting WhatsApp
 

@@ -332,12 +332,15 @@ test('only the policy engine compares a role against a permission', () => {
       }
       if (!entry.name.endsWith('.js')) continue;
 
-      // The policy layer is where this belongs; the family registry validates
-      // the role field; familyReport prints it for the local operator.
+      // Handling a role as *data* is not a permission decision. The policy
+      // layer decides; the registry validates the field; familyReport displays
+      // it; setup assigns one when creating a member. None of those compares a
+      // role to grant access, which is what this rule protects.
       const allowed = [
         path.join('src', 'policy'),
         path.join('src', 'familyRegistry.js'),
         path.join('src', 'familyReport.js'),
+        path.join('src', 'setup.js'),
       ];
       if (allowed.some((prefix) => full.includes(prefix))) continue;
 

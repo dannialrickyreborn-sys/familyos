@@ -58,6 +58,12 @@ async function main() {
     return;
   }
 
+  if (command === 'setup') {
+    const { runSetup } = require('../src/setup');
+    await runSetup();
+    return;
+  }
+
   if (command === 'family') {
     const { runFamily } = require('../src/familyReport');
     runFamily();
@@ -92,6 +98,7 @@ async function main() {
 
   console.log('Usage: familyos <command>\n');
   console.log('Commands:');
+  console.log('  setup          Set FamilyOS up from scratch (start here)');
   console.log('  doctor         Check environment, Notion, and WhatsApp health');
   console.log('  brief [--transport console|whatsapp]   Print (or send) today\'s executive brief');
   console.log('  config         Show current configuration (secrets masked)');
