@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { idFor, buildRegistry } = require('../src/setup');
+const { idFor, buildRegistry, exitCodeFor } = require('../src/setup');
 const { parseRegistry } = require('../src/familyRegistry');
 
 const CLI = path.join(__dirname, '..', 'bin', 'familyos.js');
@@ -165,6 +165,14 @@ test('setup explains itself instead of hanging when it cannot ask questions', ()
     assert.ok(out.includes('not interactive'), out);
     assert.ok(out.includes('npm run whatsapp:link'), 'it should still say what to do');
   });
+});
+
+test('deferring WhatsApp pairing is not treated as a failure', () => {
+  // The registry is what makes FamilyOS usable; pairing later is a valid
+  // choice. Exiting non-zero would make npm print an error block over a setup
+  // that worked, which is alarming for a non-developer.
+  assert.strictEqual(exitCodeFor({ registryOk: true }), 0, 'deferred pairing must not fail');
+  assert.strictEqual(exitCodeFor({ registryOk: false }), 1, 'an unusable registry must fail');
 });
 
 test('setup creates .env from the template so nobody has to know it exists', () => {
