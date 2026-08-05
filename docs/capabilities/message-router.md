@@ -75,9 +75,10 @@ Two properties worth noting:
 
 ## Current wiring
 
-The WhatsApp transport is send-only — it does not listen for incoming messages, and adding that means changing the transport, which was out of scope for this sprint. So the router is complete but not yet fed by WhatsApp.
+The router is fed from two places, both using the same `routeMessage` call:
 
-It is driven today by the CLI, which runs a message through exactly the same path an inbound message would take:
+- **WhatsApp** — `npm run listen` subscribes to inbound messages and answers registered members automatically. See [WhatsApp Inbound](whatsapp-inbound.md).
+- **CLI** — for testing and for driving a single message by hand:
 
 ```
 familyos message --from <phone-or-jid> "<text>"
@@ -96,11 +97,11 @@ REJECTED — +6289999999999 is not an active family member. No reply sent.
 
 Exit code is `0` for handled and ignored messages, `1` for a rejected sender.
 
-To connect this to live WhatsApp later, a `messages.upsert` listener in the transport needs to call `routeMessage` and send `reply` back when it is not `null`. No change to the router or the engine is required.
+The WhatsApp listener does exactly the same thing: it normalizes the inbound event, calls `routeMessage`, and sends `reply` when it is not `null`. Wiring it required no change to the router or the runtime.
 
 ## Known limitations
 
-- **No inbound delivery yet** — the above. Commands are reachable via the CLI only.
+- **Direct messages only** — group chats, broadcasts and channels are ignored by the inbound listener.
 - **No roles enforced** — every active member can run every command.
 - **No rate limiting** — nothing throttles how often a member can trigger commands.
 - **Text only** — media, reactions, and group messages are not considered.

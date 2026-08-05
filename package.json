@@ -13,7 +13,8 @@
     "config": "node bin/familyos.js config",
     "whatsapp:link": "node bin/familyos.js whatsapp:link",
     "whatsapp:status": "node bin/familyos.js whatsapp:status",
-    "family": "node bin/familyos.js family"
+    "family": "node bin/familyos.js family",
+    "listen": "node bin/familyos.js listen"
   },
   "engines": {
     "node": ">=18"

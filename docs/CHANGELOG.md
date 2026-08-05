@@ -2,6 +2,19 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — WhatsApp Inbound
+
+Connects the WhatsApp transport to the capability runtime. `src/messageRouter.js` and everything under `src/capabilities/` are unchanged: this is the adapter that feeds the existing chain, so the CLI and WhatsApp behave identically.
+
+- **Inbound adapter** (`src/whatsappInbound.js`) — normalizes a `messages.upsert` batch, applies the ignore rules, resolves identity through the router, runs the runtime, and decides what to send. Pure and testable: `attachInbound` only needs a socket with `ev.on` and `sendMessage`.
+- **Listener** (`familyos listen`, `npm run listen`) — long-running command that answers registered members. Refuses to start without a linked session. Supervises its own connection: reports a drop in plain language and reconnects with exponential backoff (2s doubling, capped at 60s), treating an unlinked session or a refused pairing as fatal rather than retrying forever. Shuts down cleanly on `Ctrl+C`/`SIGTERM`. Loads the family registry per event, so member changes apply without a restart.
+- **Ignored**: history sync (`type: 'append'`, which would otherwise replay old commands on every reconnect), the device's own messages (which would loop), group chats, status broadcasts and channels, unsupported message types, and malformed events. Unknown or deactivated senders are rejected by the router and never answered; a member's ordinary chatter produces no reply. A reply is sent only when the runtime returned one.
+- **Text extraction** handles `conversation` and `extendedTextMessage`, unwrapping ephemeral and view-once messages.
+- **Tests** — 23 new (74 total): normalization and every filter, the full chain end to end against a stand-in socket, batch ordering, a send failure not stopping later replies, a broken registry not killing the listener, and feeding a reply back with `fromMe` producing no loop.
+- **Documentation** — `docs/capabilities/whatsapp-inbound.md`; registry entry CAP-006.
+
+The live round trip from a real phone is not verified: the development sandbox blocks WebSocket connections, so the socket never opens there. The listener process itself was run and behaves correctly; confirming a real `/ping` → `pong` needs a device.
+
 ## Unreleased — Capability Runtime
 
 Replaces the static command dispatch with a pluggable capability runtime. Behaviour is unchanged: all 31 existing tests passed without modification.
