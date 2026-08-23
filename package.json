@@ -11,6 +11,7 @@
     "setup": "npm install --no-audit --no-fund && node bin/familyos.js setup",
     "doctor": "node bin/familyos.js doctor",
     "brief": "node bin/familyos.js brief",
+    "personalized-brief": "node bin/familyos.js personalized-brief",
     "config": "node bin/familyos.js config",
     "whatsapp:link": "node bin/familyos.js whatsapp:link",
     "whatsapp:status": "node bin/familyos.js whatsapp:status",
