@@ -51,6 +51,8 @@ The tools above are what FamilyOS is built *from*. These are the layers it is bu
 ```
 WhatsApp transport      messages.upsert          src/transports/whatsapp.js
         |
+Loop guards             is this ours?            src/whatsappOutbox.js
+        |
 Inbound adapter         normalize + filter       src/whatsappInbound.js
         |
 Identity                who is speaking          src/familyRegistry.js
@@ -63,6 +65,8 @@ Policy engine           may this actor do this?  src/policy/engine.js
         |
 Capability              /help /status /family    src/capabilities/*.js
 ```
+
+FamilyOS runs as a **linked device on the owner's personal WhatsApp account**, so the owner's own commands arrive marked `fromMe` — exactly like FamilyOS's own replies. `fromMe` therefore cannot decide anything by itself. Three independent guards separate the two: an **outbox** of every id FamilyOS has sent, the rule that only the **owner's own chat** is a command surface, and a **bounded budget** for self-originated commands that makes a runaway impossible by construction. See [ADR-002](architecture/ADR-002-one-number-executive-interface.md).
 
 A capability declares the *action* it performs (`memory.forget`), never who may perform it. The Policy Engine holds every rule in one table, and an action nobody defined is denied rather than allowed.
 

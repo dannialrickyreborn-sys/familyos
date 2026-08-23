@@ -18,6 +18,7 @@ const {
 } = require('../whatsappSession');
 const { describeDisconnect } = require('../whatsappErrors');
 const { attachInbound } = require('../whatsappInbound');
+const { createOutbox } = require('../whatsappOutbox');
 const { normalizePhone } = require('../phone');
 const { isInteractive, withPrompt, chooseOption } = require('../prompt');
 
@@ -322,7 +323,11 @@ async function sendToPhone(phone, text) {
   const { digits } = normalizePhone(phone);
 
   const { version } = await withConnection(async (sock) => {
-    await sock.sendMessage(`${digits}@s.whatsapp.net`, { text });
+    const receipt = await sock.sendMessage(`${digits}@s.whatsapp.net`, { text });
+    // The listener runs on a different socket, often a different process, so
+    // the id is shared through the outbox file. Without this, a reminder sent
+    // to the owner would come back looking like a new command.
+    createOutbox().record(receipt && receipt.key && receipt.key.id);
   });
 
   recordLogin({ phone: session.phone, waVersion: version.join('.') });
@@ -388,11 +393,17 @@ async function listen({ loadFamily, signal, log = console.log } = {}) {
   }
 
   const version = await resolveVersion();
+  // One outbox for the whole listener run, so ids survive reconnects.
+  const outbox = createOutbox();
   let backoff = RECONNECT_BASE_MS;
 
   while (!signal?.aborted) {
     const { sock } = await openSocket(version);
-    attachInbound(sock, { loadFamily, log });
+    // The account FamilyOS is linked to. Self-sent messages in this account's
+    // own chat are the owner issuing commands; see
+    // docs/architecture/ADR-002-one-number-executive-interface.md.
+    const ownJid = (sock.user && sock.user.id) || session.phone || null;
+    attachInbound(sock, { loadFamily, log, ownJid, outbox });
 
     let closure;
     try {

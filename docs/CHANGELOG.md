@@ -2,6 +2,20 @@
 
 All notable changes to FamilyOS are documented here.
 
+## Unreleased — One-Number Executive Interface (architecture correction)
+
+The owner can now command FamilyOS from the same personal WhatsApp account it is linked to. See [ADR-002](architecture/ADR-002-one-number-executive-interface.md).
+
+- **Removed `if (key.fromMe) ignore`.** WhatsApp mirrors every message the account sends to all linked devices marked `fromMe` — both the owner's typed commands and FamilyOS's own replies. The filter prevented loops but made the product impossible, because `fromMe` says only that the account sent something, not who authored it.
+- **Three independent guards replace it**, each covering a different loop vector:
+  1. **Outbox** (`src/whatsappOutbox.js`) — the `key.id` of every message FamilyOS sends is recorded; an inbound `fromMe` message with a known id is ours. Authoritative rather than inferred. Persisted to `.familyos/outbox.json` because the listener and the notification path use different sockets, often different processes: a reminder sent to the owner lands in the owner's own chat and comes back to the listener.
+  2. **The owner's own chat is the command surface** — a self-sent message in anyone else's chat is ignored. This structurally covers FamilyOS's reminders to other members even if the outbox missed an id, and stops FamilyOS ever replying inside a conversation with another person. Identity comes from the account's own JID, since `remoteJid` on a `fromMe` message names the recipient. Device suffixes are compared by phone number.
+  3. **A bounded budget** for self-originated commands per chat, so a runaway is impossible by construction even if both guards above were wrong.
+- **Fails closed:** with no known account JID, every self-sent message is ignored — a missed command rather than a loop.
+- **Unchanged:** history sync (`append`), groups, broadcasts, channels, unsupported types, and the unknown-sender policy — all still applied to self-sent messages too.
+- **Tests** — 12 new (197 total), including the four required proofs: an owner command executes, FamilyOS's own reply is not reprocessed, a reminder to another member *and* to the owner is not reprocessed, and with id tracking deliberately broken plus every reply looking like a command, 50 self-sent messages produce exactly 5 replies. Two existing tests changed expectation by design, since a self-sent command in the owner's own chat must now be answered.
+- **Not verified live.** The sandbox blocks WebSockets, so the assumption that a Note-to-Self message arrives with `remoteJid` equal to the account's own JID is reasoned from the protocol, not observed. It is the first thing to confirm on a device.
+
 ## Unreleased — Zero-Touch Setup (CAP-010)
 
 A fresh clone reaches a running assistant with one command. Nothing is hand-edited.

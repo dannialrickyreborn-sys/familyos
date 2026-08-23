@@ -54,11 +54,15 @@ Baileys delivers a batch on `messages.upsert`. Text is taken from `conversation`
 | Ignored | Why |
 |---|---|
 | `type !== 'notify'` | `append` is history being synced on reconnect. Acting on it would replay old commands every time the listener reconnects. |
-| `key.fromMe` | FamilyOS's own replies arrive through this same event; answering them would loop forever. |
+| `key.fromMe` **in the outbox** | a message FamilyOS itself sent, recognised by its recorded id |
+| `key.fromMe` **in another member's chat** | the owner talking to a person, or a FamilyOS reminder addressed to them — never a command |
+| self-originated commands **over budget** | a bounded cap that makes a runaway impossible by construction |
 | `@g.us` | group chats — out of scope for now |
 | `status@broadcast`, `@broadcast`, `@newsletter` | status updates and channels |
 | no extractable text | images, audio, stickers, reactions, protocol messages |
 | no `remoteJid` | malformed event |
+
+`fromMe` is **not** a filter on its own. FamilyOS runs as a linked device on the owner's personal account, so the owner's own commands arrive marked `fromMe` exactly like FamilyOS's replies do. A self-sent message in the owner's **own chat** is an owner command and is executed; identity comes from the account's JID, because for a `fromMe` message `remoteJid` names the recipient. See [ADR-002](../architecture/ADR-002-one-number-executive-interface.md).
 
 Two more filters come from layers that already existed: an **unknown or deactivated sender** is rejected by the router before the text is parsed and is never replied to, and a **known member's ordinary chatter** produces no reply because the runtime returns none.
 
@@ -78,7 +82,10 @@ The whole inbound chain is exercised in tests against a stand-in socket — an o
 - a batch is handled message by message, in order
 - a send failure is logged and does not stop later replies
 - a broken registry is reported and does not kill the listener
-- feeding a reply back with `fromMe: true` produces no second reply (no loop)
+- an owner command typed on the linked account executes, and the reply returns to that chat
+- FamilyOS's own reply, fed back with its real id, produces no second reply
+- a reminder FamilyOS sent — to another member, or to the owner — is not re-executed
+- with id tracking deliberately broken and every reply looking like a command, 50 self-sent messages produce exactly 5 replies: a loop is bounded by construction
 
 The listener process itself was run: it starts, refuses to start without a session, stays alive, reports a failed connection in plain language, backs off, and shuts down cleanly on `Ctrl+C`/`SIGTERM`.
 
