@@ -184,6 +184,14 @@ async function ensureWhatsApp(ask) {
   return readSessionInfo().registered;
 }
 
+// Choosing to pair later is a valid answer, not a failure: exiting non-zero
+// would make npm print an error block over a setup that did exactly what was
+// asked. Only an unusable family registry is a real failure, because without it
+// nothing works at all.
+function exitCodeFor({ registryOk }) {
+  return registryOk ? 0 : 1;
+}
+
 function summarize({ linked }) {
   heading('Setup summary');
 
@@ -233,7 +241,7 @@ async function runSetup() {
   const ready = summarize({ linked });
 
   if (!ready) {
-    process.exitCode = 1;
+    process.exitCode = exitCodeFor({ registryOk: describeRegistry().ok });
     return;
   }
 
@@ -247,4 +255,4 @@ async function runSetup() {
   await runListen();
 }
 
-module.exports = { runSetup, idFor, buildRegistry, saveRegistry, describeRegistry };
+module.exports = { runSetup, idFor, buildRegistry, saveRegistry, describeRegistry, exitCodeFor };
