@@ -1,103 +1,25 @@
-const { queryDatabase } = require('./notion');
+const { queryDatabase, createPage } = require('./notion');
 const { getConfig } = require('./config');
 const { notifyMember } = require('./notifications/engine');
 
-const DEFAULT_FAMILY_DB = '4b2708d9-b670-46b4-8b5f-d8f33602ce30';
-
+const FAMILY_DB = '4b2708d9-b670-46b4-8b5f-d8f33602ce30';
+const HISTORY_DB = '22d2bd8d-1795-46ff-a8e2-04e5c3f78d49';
 const THEMES = [
-  ['Weekly Reset', 'Mulai hari dengan satu prioritas yang jelas.', 'Pilih satu hal penting yang ingin selesai hari ini.', 'Kemajuan tidak harus besar; yang penting nyata.'],
-  ['Energy', 'Energi yang stabil membantu kita berpikir dan bertindak lebih baik.', 'Pilih satu kebiasaan kecil yang membuat tubuh lebih siap menjalani hari.', 'Rawat energi sebelum menuntut performa.'],
-  ['Learning', 'Wawasan bertambah ketika kita rutin bertanya dan mencoba.', 'Pelajari satu hal baru dan simpan satu pelajaran yang berguna.', 'Rasa ingin tahu adalah investasi jangka panjang.'],
-  ['Focus', 'Perhatian adalah sumber daya terbatas.', 'Kerjakan satu tugas penting tanpa distraksi selama 20 menit.', 'Sedikit fokus yang konsisten mengalahkan banyak rencana yang tidak dijalankan.'],
-  ['Connection', 'Hubungan yang baik dibangun dari perhatian kecil yang konsisten.', 'Berikan satu apresiasi tulus kepada anggota keluarga hari ini.', 'Kehadiranmu punya nilai bagi orang lain.'],
-  ['Growth', 'Pertumbuhan datang dari refleksi dan tindakan.', 'Catat satu hal yang berhasil dan satu hal yang ingin diperbaiki.', 'Kamu tidak perlu sempurna untuk terus berkembang.'],
-  ['Reflection', 'Refleksi membuat kemajuan yang samar menjadi terlihat.', 'Sebutkan satu hal yang kamu syukuri dan satu langkah berikutnya.', 'Tetap bergerak. Hari baru adalah kesempatan baru.'],
+  ['Weekly Reset','Mulai hari dengan satu prioritas yang jelas.','Pilih satu hal penting yang ingin selesai hari ini.','Kemajuan tidak harus besar; yang penting nyata.'],
+  ['Energy','Energi yang stabil membantu kita berpikir dan bertindak lebih baik.','Pilih satu kebiasaan kecil yang membuat tubuh lebih siap menjalani hari.','Rawat energi sebelum menuntut performa.'],
+  ['Learning','Wawasan bertambah ketika kita rutin bertanya dan mencoba.','Pelajari satu hal baru dan simpan satu pelajaran yang berguna.','Rasa ingin tahu adalah investasi jangka panjang.'],
+  ['Focus','Perhatian adalah sumber daya terbatas.','Kerjakan satu tugas penting tanpa distraksi selama 20 menit.','Sedikit fokus yang konsisten mengalahkan banyak rencana yang tidak dijalankan.'],
+  ['Connection','Hubungan yang baik dibangun dari perhatian kecil yang konsisten.','Berikan satu apresiasi tulus kepada anggota keluarga hari ini.','Kehadiranmu punya nilai bagi orang lain.'],
+  ['Growth','Pertumbuhan datang dari refleksi dan tindakan.','Catat satu hal yang berhasil dan satu hal yang ingin diperbaiki.','Kamu tidak perlu sempurna untuk terus berkembang.'],
+  ['Reflection','Refleksi membuat kemajuan yang samar menjadi terlihat.','Sebutkan satu hal yang kamu syukuri dan satu langkah berikutnya.','Tetap bergerak. Hari baru adalah kesempatan baru.'],
 ];
 
-function prop(page, name) {
-  const p = page?.properties?.[name];
-  if (!p) return null;
-  if (p.type === 'title') return p.title?.map(x => x.plain_text || x.text?.content || '').join('') || '';
-  if (p.type === 'rich_text') return p.rich_text?.map(x => x.plain_text || x.text?.content || '').join('') || '';
-  if (p.type === 'select') return p.select?.name || '';
-  if (p.type === 'checkbox') return !!p.checkbox;
-  if (p.type === 'phone_number') return p.phone_number || '';
-  return null;
-}
-
-function normalizePhone(value) {
-  if (!value) return '';
-  const s = String(value).replace(/[^0-9+]/g, '');
-  if (s.startsWith('08')) return `+62${s.slice(1)}`;
-  return s.startsWith('+') ? s : `+${s}`;
-}
-
-function buildMessage(member, dayIndex) {
-  const [theme, insight, action, booster] = THEMES[dayIndex];
-  const profile = member.profile;
-  if (profile === 'SPOUSE') {
-    return `🌤️ Daily Brief — ${member.name}\nTema: ${theme}\n\n${insight}\n\nPraktik hari ini: ${action}\n\n${booster}\n\nPertanyaan: Apa satu hal kecil yang bisa membuat hari ini terasa lebih ringan?`;
-  }
-  if (profile === 'CHILD_1' || profile === 'CHILD_2') {
-    return `🌱 Daily Brief — ${member.name}\nTema: ${theme}\n\n${insight}\n\nCoba hari ini: ${action}\n\n${booster}`;
-  }
-  return `👨‍👩‍👧‍👦 Family Daily Brief\nTema: ${theme}\n\n${insight}\n\nPraktik hari ini: ${action}\n\n${booster}\n\nPertanyaan keluarga: Apa satu hal baik yang ingin kita lakukan hari ini?`;
-}
-
-async function loadMembers(config) {
-  const db = process.env.NOTION_DB_FAMILY_MEMBERS || DEFAULT_FAMILY_DB;
-  const result = await queryDatabase(config.notionToken, db, { page_size: 100 });
-  return (result.results || []).map(page => ({
-    id: page.id.replace(/-/g, '').slice(0, 20),
-    name: prop(page, 'Name') || '',
-    active: prop(page, 'Active') === true,
-    whatsappAvailable: prop(page, 'WhatsApp Available') === true,
-    recipient: prop(page, 'WhatsApp Recipient') || '',
-    phone: normalizePhone(prop(page, 'Phone') || prop(page, 'WhatsApp Recipient')),
-    profile: prop(page, 'Content Profile') || 'FAMILY',
-    fallback: prop(page, 'Fallback Recipient') || '',
-    role: prop(page, 'Role') || 'Other',
-  })).filter(m => m.name);
-}
-
-async function runPersonalizedBrief() {
-  const config = getConfig();
-  if (!config.notionToken) throw new Error('NOTION_TOKEN is not set.');
-  const members = await loadMembers(config);
-  const byName = new Map(members.map(m => [m.name.toLowerCase(), m]));
-  const dayIndex = new Date().getDay();
-  const results = [];
-
-  for (const member of members.filter(m => m.active)) {
-    let target = member;
-    if (!member.whatsappAvailable) {
-      if (!member.fallback) {
-        results.push({ memberId: member.id, ok: false, skipped: false, detail: 'Missing fallback recipient.' });
-        continue;
-      }
-      target = byName.get(member.fallback.toLowerCase());
-      if (!target || !target.active || !target.whatsappAvailable) {
-        results.push({ memberId: member.id, ok: false, skipped: false, detail: 'Configured fallback is unavailable.' });
-        continue;
-      }
-    }
-
-    if (!target.phone || !/^\+?\d{10,15}$/.test(target.phone)) {
-      results.push({ memberId: member.id, ok: false, skipped: false, detail: 'No valid WhatsApp recipient.' });
-      continue;
-    }
-
-    const deliveryMember = { ...target, id: member.id, name: member.name };
-    results.push(await notifyMember(member.id, buildMessage(member, dayIndex), {
-      family: { members: [deliveryMember] },
-    }));
-  }
-
-  const sent = results.filter(r => r.ok && !r.skipped).length;
-  const failed = results.filter(r => !r.ok).length;
-  console.log(`Personalized Daily Brief: ${sent} sent, ${failed} failed, ${results.length} processed.`);
-  results.forEach(r => console.log(r.ok ? `PASS ${r.memberId}` : `FAIL ${r.memberId}: ${r.detail}`));
-  if (failed) process.exitCode = 1;
-}
-
-module.exports = { runPersonalizedBrief, buildMessage, loadMembers };
+function prop(page,name){const p=page?.properties?.[name];if(!p)return null;if(p.type==='title')return p.title?.map(x=>x.plain_text||x.text?.content||'').join('')||'';if(p.type==='rich_text')return p.rich_text?.map(x=>x.plain_text||x.text?.content||'').join('')||'';if(p.type==='select')return p.select?.name||'';if(p.type==='checkbox')return !!p.checkbox;if(p.type==='phone_number')return p.phone_number||'';return null;}
+function phone(v){if(!v)return '';const s=String(v).replace(/[^0-9+]/g,'');return s.startsWith('08')?`+62${s.slice(1)}`:s.startsWith('+')?s:`+${s}`;}
+function message(m,i){const[t,ins,act,boost]=THEMES[i];if(m.profile==='SPOUSE')return `🌤️ Daily Brief — ${m.name}\nTema: ${t}\n\n${ins}\n\nPraktik hari ini: ${act}\n\n${boost}\n\nPertanyaan: Apa satu hal kecil yang bisa membuat hari ini terasa lebih ringan?`;if(m.profile==='CHILD_1'||m.profile==='CHILD_2')return `🌱 Daily Brief — ${m.name}\nTema: ${t}\n\n${ins}\n\nCoba hari ini: ${act}\n\n${boost}`;return `👨‍👩‍👧‍👦 Family Daily Brief\nTema: ${t}\n\n${ins}\n\nPraktik hari ini: ${act}\n\n${boost}\n\nPertanyaan keluarga: Apa satu hal baik yang ingin kita lakukan hari ini?`;}
+async function loadMembers(c){const r=await queryDatabase(c.notionToken,process.env.NOTION_DB_FAMILY_MEMBERS||FAMILY_DB,{page_size:100});return(r.results||[]).map(p=>({id:p.id.replace(/-/g,'').slice(0,20),name:prop(p,'Name')||'',active:prop(p,'Active')===true,whatsappAvailable:prop(p,'WhatsApp Available')===true,recipient:prop(p,'WhatsApp Recipient')||'',phone:phone(prop(p,'Phone')||prop(p,'WhatsApp Recipient')),profile:prop(p,'Content Profile')||'FAMILY',fallback:prop(p,'Fallback Recipient')||''})).filter(x=>x.name);}
+function date(c){return new Intl.DateTimeFormat('en-CA',{timeZone:c.timezone||'Asia/Jakarta'}).format(new Date());}
+async function sent(c,key){const r=await queryDatabase(c.notionToken,process.env.NOTION_DB_DAILY_BRIEF_HISTORY||HISTORY_DB,{filter:{property:'Delivery Key',rich_text:{equals:key}},page_size:5});return(r.results||[]).some(p=>p.properties?.Status?.select?.name==='SENT');}
+async function log(c,row){const p={Record:{title:[{text:{content:row.key}}]},'date:Date:start':row.date,'date:Date:is_datetime':0,Member:{rich_text:[{text:{content:row.member}}]},'Content Type':{rich_text:[{text:{content:'PERSONALIZED_DAILY_BRIEF'}}]},Theme:{rich_text:[{text:{content:row.theme}}]},Recipient:{rich_text:[{text:{content:row.recipient||''}}]},'Delivery Channel':{rich_text:[{text:{content:'WHATSAPP'}}]},Status:{select:{name:row.status}},Error:{rich_text:row.error?[{text:{content:row.error.slice(0,1900)}}]:[]},'Retry Count':{number:row.retryCount||0},'Delivery Key':{rich_text:[{text:{content:row.key}}]}};if(row.sentAt){p['date:Sent At:start']=row.sentAt;p['date:Sent At:is_datetime']=1;}await createPage(c.notionToken,process.env.NOTION_DB_DAILY_BRIEF_HISTORY||HISTORY_DB,p);}
+async function runPersonalizedBrief(){const c=getConfig();if(!c.notionToken)throw new Error('NOTION_TOKEN is not set.');const ms=await loadMembers(c),byName=new Map(ms.map(m=>[m.name.toLowerCase(),m])),i=new Date().getDay(),d=date(c),out=[];for(const m of ms.filter(x=>x.active)){const key=`${d}:${m.id}:PERSONALIZED_DAILY_BRIEF`;if(await sent(c,key)){out.push({memberId:m.id,ok:true,skipped:true,detail:'Already SENT today.'});continue;}let target=m;if(!m.whatsappAvailable){if(!m.fallback){await log(c,{key,date:d,member:m.name,theme:THEMES[i][0],status:'FAILED',error:'Missing fallback recipient.'});out.push({memberId:m.id,ok:false,detail:'Missing fallback recipient.'});continue;}target=byName.get(m.fallback.toLowerCase());if(!target||!target.active||!target.whatsappAvailable){await log(c,{key,date:d,member:m.name,theme:THEMES[i][0],recipient:m.fallback,status:'FAILED',error:'Configured fallback is unavailable.'});out.push({memberId:m.id,ok:false,detail:'Configured fallback is unavailable.'});continue;}}if(!target.phone||!/^[+]?\d{10,15}$/.test(target.phone)){await log(c,{key,date:d,member:m.name,theme:THEMES[i][0],recipient:target.recipient,status:'FAILED',error:'No valid WhatsApp recipient.'});out.push({memberId:m.id,ok:false,detail:'No valid WhatsApp recipient.'});continue;}const r=await notifyMember(m.id,message(m,i),{family:{members:[{...target,id:m.id,name:m.name}]}}),ok=r.ok&&!r.skipped;await log(c,{key,date:d,member:m.name,theme:THEMES[i][0],recipient:target.recipient||target.phone,status:ok?'SENT':'FAILED',sentAt:ok?new Date().toISOString():null,error:ok?'':(r.detail||'Delivery failed.')});out.push(r);}const sentN=out.filter(r=>r.ok&&!r.skipped).length,skipN=out.filter(r=>r.skipped).length,failN=out.filter(r=>!r.ok).length;console.log(`Personalized Daily Brief: ${sentN} sent, ${skipN} skipped, ${failN} failed.`);out.forEach(r=>console.log(r.skipped?`SKIP ${r.memberId}: ${r.detail}`:r.ok?`PASS ${r.memberId}`:`FAIL ${r.memberId}: ${r.detail}`));if(failN)process.exitCode=1;}
+module.exports={runPersonalizedBrief,buildMessage:message,loadMembers};
