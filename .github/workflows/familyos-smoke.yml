@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
 
+# Keep the smoke test runnable from GitHub Actions without a local terminal.
+
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
