@@ -11,27 +11,16 @@ async function notionRequest(token, method, path, body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-
   const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const message = data && data.message ? data.message : `HTTP ${res.status}`;
-    throw new Error(message);
-  }
-
+  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
   return data;
 }
 
-function getCurrentUser(token) {
-  return notionRequest(token, 'GET', '/users/me');
+function getCurrentUser(token) { return notionRequest(token, 'GET', '/users/me'); }
+function getDatabase(token, databaseId) { return notionRequest(token, 'GET', `/databases/${databaseId}`); }
+function queryDatabase(token, databaseId, body = {}) { return notionRequest(token, 'POST', `/databases/${databaseId}/query`, body); }
+function createPage(token, parentDatabaseId, properties) {
+  return notionRequest(token, 'POST', '/pages', { parent: { database_id: parentDatabaseId }, properties });
 }
 
-function getDatabase(token, databaseId) {
-  return notionRequest(token, 'GET', `/databases/${databaseId}`);
-}
-
-function queryDatabase(token, databaseId, body = {}) {
-  return notionRequest(token, 'POST', `/databases/${databaseId}/query`, body);
-}
-
-module.exports = { getCurrentUser, getDatabase, queryDatabase };
+module.exports = { getCurrentUser, getDatabase, queryDatabase, createPage };
